@@ -11,9 +11,11 @@ interface UserProfile {
   username: string;
   bio?: string;
   avatar?: string;
+  age?: number;
   gender?: 'male' | 'female' | 'transgender' | 'lesbian' | 'gay' | 'bisexual_male' | 'bisexual_female' | 'prefer_not_to_say';
   role: 'user' | 'admin';
   hasAcceptedTerms?: boolean;
+  isProfileComplete?: boolean;
 }
 
 interface AuthContextType {
@@ -26,6 +28,7 @@ interface AuthContextType {
   banInfo: { reason: string; bannedAt: string } | null;
   signUp: (email: string, password: string, userData: Partial<UserProfile>) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
@@ -36,7 +39,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 // localStorage cache keys
 const PROFILE_CACHE_KEY = 'silius_profile_cache';
 const CACHE_EXPIRY_KEY = 'silius_cache_expiry';
-const CACHE_DURATION = 5 * 60 * 1000; // 5 dakika
+const CACHE_DURATION = 10 * 60 * 1000; // 10 dakika - Daha uzun cache = Daha hızlı yükleme
+const MAX_LOADING_TIME = 2000; // 2 saniye maksimum yükleme süresi - daha hızlı!
 
 // LocalStorage'dan profil cache'i oku
 const getProfileFromCache = (userId: string): UserProfile | null => {
@@ -82,27 +86,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     try {
-      // Kısa timeout - 5 saniye
-      const timeoutPromise = new Promise<null>((_, reject) =>
-        setTimeout(() => reject(new Error('TIMEOUT')), 5000)
+      // Timeout - 2 saniye (hızlı yükleme)
+      const timeoutPromise = new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), 2000)
       );
 
+      // maybeSingle() kullan - single() 406 hatası veriyor
       const fetchPromise = supabase
         .from('users')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       const result = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (!result) {
+        console.warn('Profile fetch timeout - 2s geçti');
         return null;
       }
 
       const { data, error } = result as any;
 
       if (error) {
+        // 406 hatası - ignore et çünkü maybeSingle ile çözülmeli
+        if (error.code === 'PGRST116') {
+          console.warn('Profile not found (expected for new users)');
+          return null;
+        }
         console.warn('Profile fetch warning:', error.message);
+        return null;
+      }
+
+      if (!data) {
+        console.log('No profile found for user:', userId);
         return null;
       }
 
@@ -110,9 +126,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       saveProfileToCache(profileData);
       return profileData;
     } catch (err: any) {
-      if (err.message === 'TIMEOUT') {
-        console.warn('Profile fetch timed out');
-      }
+      console.warn('Profile fetch error:', err?.message);
       return null;
     }
   };
@@ -127,59 +141,80 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     let mounted = true;
 
+    // GÜVENLİK: Maksimum 3 saniye loading - sonra zorla göster
+    const loadingTimeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('⚠️ Max loading time (3s) reached, forcing UI');
+        setLoading(false);
+      }
+    }, 3000);
+
     const checkAuth = async () => {
       try {
-        // Hızlı başlangıç: Session'ı al
+        // 1. Session'ı al - localStorage'dan çok hızlı gelecek
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!mounted) return;
 
+        // Session ve user'ı hemen set et
         setSession(session);
         setUser(session?.user ?? null);
 
-        if (session?.user) {
-          // Ban kontrolü
-          const banned = await db.isUserBanned(session.user.id);
-          if (banned) {
-            const banData = await db.getBanInfo(session.user.id);
-            if (mounted) {
-              setIsBanned(true);
-              setBanInfo(banData);
-              setLoading(false);
-            }
-            return;
-          }
+        // 2. Kullanıcı giriş yapmamışsa hemen bitir
+        if (!session?.user) {
           setIsBanned(false);
           setBanInfo(null);
+          setProfile(null);
+          setLoading(false);
+          clearTimeout(loadingTimeout);
+          return;
+        }
 
-          // Önce cache'den profil yükle (anında göster)
-          const cachedProfile = getProfileFromCache(session.user.id);
-          if (cachedProfile) {
-            setProfile(cachedProfile);
-            setLoading(false);
+        // 3. Önce cache'den profil yükle - ANINDA göster
+        const cachedProfile = getProfileFromCache(session.user.id);
+        if (cachedProfile) {
+          setProfile(cachedProfile);
+          setIsBanned(false);
+          setBanInfo(null);
+          setLoading(false); // Hemen göster!
+          clearTimeout(loadingTimeout);
 
-            // Arka planda güncel profili al
-            fetchProfile(session.user.id, false).then(freshProfile => {
-              if (mounted && freshProfile) {
-                setProfile(freshProfile);
-              }
-            });
-          } else {
-            // Cache yoksa normal yükle
-            const profileData = await fetchProfile(session.user.id);
-            if (mounted) {
-              setProfile(profileData);
-              setLoading(false);
-            }
-          }
+          // Arka planda güncel veri al (kullanıcı beklemez)
+          fetchProfile(session.user.id, false).then(fresh => {
+            if (mounted && fresh) setProfile(fresh);
+          }).catch(() => { });
+
+          return;
+        }
+
+        // 4. Cache yoksa - PARALEL yükle (ban + profile aynı anda)
+        const [banResult, profileData] = await Promise.all([
+          db.isUserBanned(session.user.id).catch(() => false),
+          fetchProfile(session.user.id)
+        ]);
+
+        if (!mounted) return;
+
+        // Ban kontrolü
+        if (banResult) {
+          const banData = await db.getBanInfo(session.user.id);
+          setIsBanned(true);
+          setBanInfo(banData);
         } else {
           setIsBanned(false);
           setBanInfo(null);
-          setLoading(false);
         }
+
+        setProfile(profileData);
+        setLoading(false);
+        clearTimeout(loadingTimeout);
+
       } catch (error) {
         console.warn('⚠️ Auth check failed:', error);
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+          clearTimeout(loadingTimeout);
+        }
       }
     };
 
@@ -190,21 +225,86 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       async (event, session) => {
         if (!mounted) return;
 
+        console.log('🔄 Auth state changed:', event, session?.user?.email);
+
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
+          // Önce cache'den profil kontrol et - HIZLI YÜKLEME
+          const cachedProfile = getProfileFromCache(session.user.id);
+          if (cachedProfile) {
+            setProfile(cachedProfile);
+            setIsBanned(false);
+            setBanInfo(null);
+            setLoading(false);
+            // Arka planda güncel veri al
+            fetchProfile(session.user.id, false).then(fresh => {
+              if (mounted && fresh) setProfile(fresh);
+            }).catch(() => {});
+            return;
+          }
+
+          // Cache yoksa paralel yükle - ban + profil aynı anda
+          const [banResult, profileData] = await Promise.all([
+            db.isUserBanned(session.user.id).catch(() => false),
+            fetchProfile(session.user.id)
+          ]);
+
+          if (!mounted) return;
+
           // Ban kontrolü
-          const banned = await db.isUserBanned(session.user.id);
-          if (banned) {
+          if (banResult) {
             const banData = await db.getBanInfo(session.user.id);
             setIsBanned(true);
             setBanInfo(banData);
-          } else {
-            setIsBanned(false);
-            setBanInfo(null);
-            const profileData = await fetchProfile(session.user.id);
+            setLoading(false);
+            return;
+          }
+
+          setIsBanned(false);
+          setBanInfo(null);
+
+          // Profil varsa set et, yoksa oluştur
+          if (profileData) {
             setProfile(profileData);
+          } else {
+            // Profil yoksa otomatik oluştur (Google OAuth veya normal kayıt)
+            console.log('🆕 No profile found, creating automatically...');
+
+            const userMeta = session.user.user_metadata || {};
+            const email = session.user.email || '';
+            const fullName = userMeta?.full_name || userMeta?.name || '';
+            const nameParts = fullName.split(' ').filter(Boolean);
+            const firstName = userMeta?.firstName || nameParts[0] || email.split('@')[0] || 'User';
+            const lastName = userMeta?.lastName || nameParts.slice(1).join(' ') || '';
+            const username = userMeta?.username || email.split('@')[0] || `user_${Date.now()}`;
+            const avatar = userMeta?.avatar_url || userMeta?.picture || userMeta?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
+
+            try {
+              const { error: insertError } = await supabase
+                .from('users')
+                .upsert({
+                  id: session.user.id,
+                  email: email,
+                  firstName: firstName,
+                  lastName: lastName,
+                  username: username,
+                  avatar: avatar,
+                  bio: "Silius'ta yeni bir macera başlıyor...",
+                  role: 'user',
+                  hasAcceptedTerms: true,
+                  isProfileComplete: false
+                }, { onConflict: 'id' });
+
+              if (!insertError) {
+                console.log('✅ Profile created successfully!');
+                const newProfile = await fetchProfile(session.user.id, false);
+                setProfile(newProfile);
+              }
+            } catch (createError) {
+              console.error('❌ Profile creation error:', createError);
+            }
           }
         } else {
           setProfile(null);
@@ -220,6 +320,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return () => {
       mounted = false;
+      clearTimeout(loadingTimeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -230,7 +331,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     userData: Partial<UserProfile>
   ): Promise<{ error: Error | null }> => {
     try {
-      // Auth'a kayıt - trigger otomatik profil oluşturacak
+      // 1. Auth'a kayıt
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -250,7 +351,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       if (!authData.user) throw new Error('Kayıt başarısız');
 
-      console.log('✅ Sign up success:', authData.user.id);
+      console.log('✅ Auth sign up success:', authData.user.id);
+
+      // 2. ✅ YENİ: public.users tablosuna da kayıt ekle
+      // isProfileComplete: false ile kaydediyoruz ki ProfileSetup sayfası açılsın
+      const { error: profileError } = await supabase
+        .from('users')
+        .upsert({
+          id: authData.user.id,
+          email: email,
+          firstName: userData.firstName || '',
+          lastName: userData.lastName || '',
+          username: userData.username || email.split('@')[0],
+          avatar: userData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.username}`,
+          bio: "Silius'ta yeni bir macera başlıyor...",
+          role: 'user',
+          hasAcceptedTerms: true,
+          isProfileComplete: false  // ← Bu sayede ProfileSetup sayfası açılacak!
+        }, { onConflict: 'id' });
+
+      if (profileError) {
+        console.error('⚠️ Profile creation error (user may need to verify email first):', profileError);
+        // E-posta doğrulaması gerekebilir, bu durumda ilk giriş sonrası profil oluşturulacak
+      } else {
+        console.log('✅ Profile created in users table with isProfileComplete: false');
+      }
+
       return { error: null };
     } catch (error) {
       console.error('🔴 Sign up catch:', error);
@@ -279,6 +405,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setSession(null);
     // Landing sayfasına yönlendir (HashRouter için)
     window.location.hash = '#/';
+  };
+
+  // Google OAuth ile giriş yapma fonksiyonu
+  const signInWithGoogle = async (): Promise<{ error: Error | null }> => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/#/home' // Başarılı girişten sonra ana sayfaya yönlendir
+        }
+      });
+
+      if (error) throw error;
+      return { error: null };
+    } catch (error) {
+      console.error('🔴 Google sign in error:', error);
+      return { error: error as Error };
+    }
   };
 
   const updateProfile = async (data: Partial<UserProfile>): Promise<{ error: Error | null }> => {
@@ -310,6 +454,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     banInfo,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
     updateProfile,
     refreshProfile

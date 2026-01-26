@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, User as UserIcon, ArrowRight, UserPlus, Fingerprint, AtSign, Home, Loader2 } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, ArrowRight, UserPlus, Fingerprint, AtSign, Home, Loader2, Chrome } from 'lucide-react';
 
 const Auth: React.FC = () => {
   const [isRegister, setIsRegister] = useState(false);
@@ -17,7 +17,7 @@ const Auth: React.FC = () => {
   });
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +67,7 @@ const Auth: React.FC = () => {
       } else {
         console.log('🔑 Attempting sign in...');
         const { error: signInError } = await signIn(formData.email, formData.password);
-        
+
         if (signInError) {
           console.error('❌ Sign in error:', signInError);
           setError('E-posta veya şifre hatalı.');
@@ -87,12 +87,30 @@ const Auth: React.FC = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Google ile giriş yapma fonksiyonu
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) {
+        setError('Google ile giriş başarısız oldu.');
+      }
+      // Başarılı olursa otomatik yönlendirilecek
+    } catch (err) {
+      setError('Bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6 bg-[var(--bg-deep)] relative overflow-hidden transition-colors duration-500">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[800px] h-[300px] md:h-[800px] bg-indigo-600/5 blur-[150px] rounded-full pointer-events-none"></div>
-      
-      <button 
+
+      <button
         onClick={() => navigate('/')}
         className="absolute top-6 left-6 md:top-10 md:left-10 z-[60] flex items-center gap-3 px-6 py-3 glass rounded-2xl border border-indigo-500/20 transition-all group backdrop-blur-xl"
       >
@@ -104,7 +122,7 @@ const Auth: React.FC = () => {
         <div className="glass-card rounded-[2.5rem] md:rounded-[3.5rem] p-8 md:p-16 border-2 border-indigo-500/20">
           <div className="text-center mb-10">
             <div className="w-16 h-16 bg-rose-500 text-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-rose-500/30">
-               <Fingerprint size={32} />
+              <Fingerprint size={32} />
             </div>
             <h2 className="text-3xl md:text-5xl font-black font-outfit mb-3 tracking-tighter uppercase leading-none">
               {isRegister ? 'YENİ HESAP' : 'SILIUS GİRİŞ'}
@@ -159,9 +177,9 @@ const Auth: React.FC = () => {
             {isRegister && (
               <div className="space-y-4 p-6 glass rounded-2xl border border-indigo-500/20">
                 <div className="flex items-start gap-3">
-                  <input 
-                    type="checkbox" 
-                    id="kvkkConsent" 
+                  <input
+                    type="checkbox"
+                    id="kvkkConsent"
                     checked={formData.kvkkConsent}
                     onChange={(e) => setFormData({ ...formData, kvkkConsent: e.target.checked })}
                     className="w-5 h-5 mt-1 accent-rose-500 cursor-pointer"
@@ -180,6 +198,34 @@ const Auth: React.FC = () => {
                 <>
                   {isRegister ? 'KAYIT OL' : 'GİRİŞ YAP'}
                   <ArrowRight size={22} />
+                </>
+              )}
+            </button>
+
+            {/* Google ile Giriş Bölümü */}
+            <div className="relative my-8">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="glass px-4 py-2 rounded-full text-[10px] font-black opacity-40 tracking-widest">
+                  VEYA
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              className="w-full glass border border-white/10 hover:border-rose-500/50 py-5 rounded-[2rem] font-black text-lg flex items-center justify-center gap-4 transition-all transform hover:scale-[1.02] disabled:opacity-50"
+            >
+              {isLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : (
+                <>
+                  <Chrome className="text-rose-500" size={24} />
+                  GOOGLE İLE {isRegister ? 'KAYIT OL' : 'GİRİŞ YAP'}
                 </>
               )}
             </button>

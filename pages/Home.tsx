@@ -180,6 +180,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
   return (
     <div className="min-h-screen p-4 md:p-8 pb-32 transition-colors duration-500">
+      {/* Ana İçerik */}
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-16">
           <div className="space-y-2">

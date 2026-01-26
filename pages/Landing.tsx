@@ -166,21 +166,10 @@ const Landing: React.FC = () => {
         </div>
       </header>
 
-      {/* Background Ambience & Hero Video */}
+      {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        {/* Video Background */}
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className={`absolute inset-0 w-full h-full object-cover ${isDarkMode ? 'opacity-20' : 'opacity-10'}`}
-        >
-          <source src="https://videos.pexels.com/video-files/3045163/3045163-uhd_2560_1440_24fps.mp4" type="video/mp4" />
-        </video>
-
-        {/* Fallback Image */}
-        <div className={`absolute inset-0 bg-[url('https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1600&auto=format&fit=crop')] bg-cover bg-center ${isDarkMode ? 'opacity-10' : 'opacity-5'}`}></div>
+        {/* Background Image */}
+        <div className={`absolute inset-0 bg-[url('https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1600&auto=format&fit=crop')] bg-cover bg-center ${isDarkMode ? 'opacity-15' : 'opacity-10'}`}></div>
 
         {/* Gradient Overlay */}
         <div className={`absolute inset-0 bg-gradient-to-b ${isDarkMode ? 'from-slate-950 via-slate-950/80 to-slate-950' : 'from-slate-50 via-slate-50/80 to-slate-50'}`}></div>

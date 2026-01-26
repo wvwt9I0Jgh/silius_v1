@@ -17,7 +17,6 @@ import Vibeler from './pages/Vibeler';
 import Topluluk from './pages/Topluluk';
 import Mekanlar from './pages/Mekanlar';
 import Navbar from './components/Navbar';
-// Admin Pages
 import Admin from './pages/Admin';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminVibes from './pages/admin/AdminVibes';
@@ -25,12 +24,14 @@ import AdminPages from './pages/admin/AdminPages';
 import AdminBans from './pages/admin/AdminBans';
 import PageEditor from './pages/admin/PageEditor';
 import CMSPageView from './pages/CMSPageView';
+import ProfileSetup from './pages/ProfileSetup';
 import BanScreen from './components/BanScreen';
 import { Moon, Sun, Loader2 } from 'lucide-react';
 
-// Protected Route Component
+
+// Protected Route Component - Profil tamamlanmamış kullanıcıları yönlendirir
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
 
   if (loading) {
     return (
@@ -42,6 +43,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // Profili tamamlanmamış TÜM kullanıcıları ProfileSetup'a yönlendir
+  // (Hem normal kayıt hem Google OAuth - sadece ilk girişte)
+  if (profile && profile.isProfileComplete === false) {
+    return <Navigate to="/profile-setup" replace />;
   }
 
   return <>{children}</>;
@@ -73,6 +80,7 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 const App: React.FC = () => {
   const { user, profile, loading, signOut, isBanned, banInfo } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [forceShow, setForceShow] = useState(false);
 
   useEffect(() => {
     // Tarayıcı tercihi kontrolü
@@ -80,7 +88,17 @@ const App: React.FC = () => {
     if (savedTheme) {
       setIsDarkMode(savedTheme === 'dark');
     }
-  }, []);
+
+    // GÜVENLİK: App seviyesinde de timeout - 4 saniye sonra zorla göster
+    const forceShowTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn('⚠️ App: Force showing UI after 4s');
+        setForceShow(true);
+      }
+    }, 4000);
+
+    return () => clearTimeout(forceShowTimeout);
+  }, [loading]);
 
   const toggleTheme = () => {
     const newMode = !isDarkMode;
@@ -92,7 +110,8 @@ const App: React.FC = () => {
     await signOut();
   };
 
-  if (loading) {
+  // Loading ekranı - ama forceShow true ise atla
+  if (loading && !forceShow) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
@@ -114,21 +133,25 @@ const App: React.FC = () => {
     username: profile.username,
     bio: profile.bio,
     avatar: profile.avatar,
+    age: profile.age,
     gender: profile.gender,
     role: profile.role,
-    hasAcceptedTerms: profile.hasAcceptedTerms
+    hasAcceptedTerms: profile.hasAcceptedTerms,
+    isProfileComplete: profile.isProfileComplete
   } : user ? {
     // Fallback: Auth user varsa minimal profil oluştur
     id: user.id,
     email: user.email || '',
-    firstName: user.user_metadata?.firstName || 'User',
-    lastName: user.user_metadata?.lastName || '',
+    firstName: user.user_metadata?.firstName || user.user_metadata?.full_name?.split(' ')[0] || 'User',
+    lastName: user.user_metadata?.lastName || user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
     username: user.user_metadata?.username || user.email?.split('@')[0] || 'user',
     bio: 'Profil yükleniyor...',
-    avatar: user.user_metadata?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+    avatar: user.user_metadata?.avatar || user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+    age: undefined,
     gender: undefined,
     role: 'user' as const,
-    hasAcceptedTerms: true
+    hasAcceptedTerms: true,
+    isProfileComplete: false
   } : null;
 
   // Profil yüklenememe durumunu sessizce yönet
@@ -165,6 +188,22 @@ const App: React.FC = () => {
 
           {/* CMS Pages (Public) */}
           <Route path="/page/:slug" element={<CMSPageView />} />
+
+          {/* Profile Setup - TÜM yeni kullanıcılar için (ilk girişte) */}
+          <Route
+            path="/profile-setup"
+            element={
+              user ? (
+                profile?.isProfileComplete ? (
+                  <Navigate to="/home" replace />
+                ) : (
+                  <ProfileSetup />
+                )
+              ) : (
+                <Navigate to="/auth" replace />
+              )
+            }
+          />
 
           <Route
             path="/home"

@@ -1,6 +1,19 @@
 
-import { supabase } from './lib/supabase';
+import { supabase, supabaseAdmin, hasAdminClient } from './lib/supabase';
 import { User, Event, Comment, EventParticipant, Friend } from './types';
+
+// Helper: Get the appropriate client for admin operations
+// Uses supabaseAdmin (service role) which bypasses RLS for all admin operations
+const getAdminClient = () => {
+  // If service role key is available, always use it for admin operations
+  if (hasAdminClient && supabaseAdmin) {
+    console.log('🔑 Using admin client (service role)');
+    return supabaseAdmin;
+  }
+  // Fallback to normal client
+  console.warn('⚠️ Admin client not available, using normal client');
+  return supabase;
+};
 
 // ==================== EVENTS ====================
 
@@ -57,7 +70,8 @@ export const db = {
   },
 
   updateEvent: async (eventId: string, updates: Partial<Event>): Promise<boolean> => {
-    const { error } = await supabase
+    const client = getAdminClient();
+    const { error } = await client
       .from('events')
       .update(updates)
       .eq('id', eventId);
@@ -70,7 +84,8 @@ export const db = {
   },
 
   deleteEvent: async (eventId: string): Promise<boolean> => {
-    const { error } = await supabase
+    const client = getAdminClient();
+    const { error } = await client
       .from('events')
       .delete()
       .eq('id', eventId);
@@ -271,56 +286,78 @@ export const db = {
   // ==================== FRIENDS ====================
 
   getFriends: async (userId: string): Promise<User[]> => {
-    const { data, error } = await supabase
+    console.log('📋 getFriends called for:', userId);
+
+    // 1. Önce arkadaş ID'lerini al
+    const { data: friendRelations, error: relError } = await supabase
       .from('friends')
-      .select(`
-        friend_id,
-        users!friends_friend_id_fkey (
-          id,
-          email,
-          firstName,
-          lastName,
-          username,
-          bio,
-          avatar,
-          role
-        )
-      `)
+      .select('friend_id')
       .eq('user_id', userId);
 
-    if (error) {
-      console.error('Friends fetch error:', error);
+    if (relError) {
+      console.error('Friends relation fetch error:', relError);
       return [];
     }
 
-    return data?.map((f: any) => f.users).filter(Boolean) || [];
+    if (!friendRelations || friendRelations.length === 0) {
+      console.log('No friends found for user:', userId);
+      return [];
+    }
+
+    const friendIds = friendRelations.map(f => f.friend_id);
+    console.log('Friend IDs:', friendIds);
+
+    // 2. Şimdi bu ID'lere sahip kullanıcıları çek
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', friendIds);
+
+    if (usersError) {
+      console.error('Friends users fetch error:', usersError);
+      return [];
+    }
+
+    console.log('Friends fetched:', users?.length || 0);
+    return users || [];
   },
 
   // Beni arkadaş ekleyenler (reverse friends)
   getReverseFriends: async (userId: string): Promise<User[]> => {
-    const { data, error } = await supabase
+    console.log('📋 getReverseFriends called for:', userId);
+
+    // 1. Önce beni ekleyenlerin ID'lerini al
+    const { data: friendRelations, error: relError } = await supabase
       .from('friends')
-      .select(`
-        user_id,
-        users!friends_user_id_fkey (
-          id,
-          email,
-          firstName,
-          lastName,
-          username,
-          bio,
-          avatar,
-          role
-        )
-      `)
+      .select('user_id')
       .eq('friend_id', userId);
 
-    if (error) {
-      console.error('Reverse friends fetch error:', error);
+    if (relError) {
+      console.error('Reverse friends relation fetch error:', relError);
       return [];
     }
 
-    return data?.map((f: any) => f.users).filter(Boolean) || [];
+    if (!friendRelations || friendRelations.length === 0) {
+      console.log('No reverse friends found for user:', userId);
+      return [];
+    }
+
+    const userIds = friendRelations.map(f => f.user_id);
+    console.log('Reverse Friend User IDs:', userIds);
+
+    // 2. Şimdi bu ID'lere sahip kullanıcıları çek
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', userIds);
+
+    if (usersError) {
+      console.error('Reverse friends users fetch error:', usersError);
+      return [];
+    }
+
+    console.log('Reverse friends fetched:', users?.length || 0);
+    return users || [];
   },
 
   getFriendIds: async (userId: string): Promise<string[]> => {
@@ -338,21 +375,74 @@ export const db = {
 
   addFriend: async (friendId: string): Promise<boolean> => {
     const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return false;
-
-    // İki yönlü arkadaşlık
-    const { error } = await supabase
-      .from('friends')
-      .insert({
-        user_id: userData.user.id,
-        friend_id: friendId
-      });
-
-    if (error) {
-      console.error('Add friend error:', error);
+    if (!userData.user) {
+      console.error('❌ addFriend: User not logged in');
       return false;
     }
-    return true;
+
+    const userId = userData.user.id;
+    console.log('📤 Adding friend:', { user_id: userId, friend_id: friendId });
+
+    // Kendini arkadaş olarak eklemeyi engelle
+    if (userId === friendId) {
+      console.warn('⚠️ Cannot add yourself as friend');
+      return false;
+    }
+
+    // Admin client kullan - RLS bypass
+    const client = getAdminClient();
+
+    try {
+      // 1. Önce arkadaşlık var mı kontrol et
+      const { data: existingFriend, error: checkError } = await client
+        .from('friends')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('friend_id', friendId)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('❌ Friend check error:', checkError);
+      }
+
+      // 2. Zaten arkadaşsa başarılı dön
+      if (existingFriend) {
+        console.log('✅ Already friends, returning success');
+        return true;
+      }
+
+      // 3. Arkadaş değilse INSERT yap (admin client ile)
+      const { error: insertError } = await client
+        .from('friends')
+        .insert({
+          user_id: userId,
+          friend_id: friendId,
+          created_at: new Date().toISOString()
+        });
+
+      if (insertError) {
+        // Duplicate hatası olsa bile başarılı say
+        if (insertError.code === '23505' ||
+          insertError.message?.toLowerCase().includes('duplicate') ||
+          insertError.message?.toLowerCase().includes('unique')) {
+          console.log('✅ Friend already exists, treating as success');
+          return true;
+        }
+
+        console.error('❌ Add friend insert error:', {
+          code: insertError.code,
+          message: insertError.message,
+          details: insertError.details
+        });
+        return false;
+      }
+
+      console.log('✅ Friend added successfully');
+      return true;
+    } catch (err) {
+      console.error('❌ addFriend exception:', err);
+      return false;
+    }
   },
 
   isFriend: async (userId: string, friendId: string): Promise<boolean> => {
@@ -461,11 +551,17 @@ export const db = {
   // ==================== ADMIN - BAN MANAGEMENT ====================
 
   banUser: async (userId: string, reason: string, bannedBy: string, expiresAt?: string): Promise<boolean> => {
-    const { error } = await supabase
+    const client = getAdminClient();
+
+    // Validate bannedBy is a valid UUID, otherwise use null
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const validBannedBy = uuidRegex.test(bannedBy) ? bannedBy : null;
+
+    const { error } = await client
       .from('banned_users')
       .insert({
         user_id: userId,
-        banned_by: bannedBy,
+        banned_by: validBannedBy,
         reason,
         expires_at: expiresAt
       });
@@ -478,7 +574,8 @@ export const db = {
   },
 
   unbanUser: async (userId: string): Promise<boolean> => {
-    const { error } = await supabase
+    const client = getAdminClient();
+    const { error } = await client
       .from('banned_users')
       .delete()
       .eq('user_id', userId);
@@ -524,7 +621,8 @@ export const db = {
   },
 
   getBannedUsers: async () => {
-    const { data, error } = await supabase
+    const client = getAdminClient();
+    const { data, error } = await client
       .from('banned_users')
       .select(`
         *,
@@ -540,12 +638,18 @@ export const db = {
   },
 
   banIP: async (ip: string, userId: string | null, reason: string, bannedBy: string): Promise<boolean> => {
-    const { error } = await supabase
+    const client = getAdminClient();
+
+    // Validate bannedBy is a valid UUID, otherwise use null
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const validBannedBy = uuidRegex.test(bannedBy) ? bannedBy : null;
+
+    const { error } = await client
       .from('banned_ips')
       .insert({
         ip_address: ip,
         user_id: userId,
-        banned_by: bannedBy,
+        banned_by: validBannedBy,
         reason
       });
 
@@ -557,7 +661,8 @@ export const db = {
   },
 
   unbanIP: async (ip: string): Promise<boolean> => {
-    const { error } = await supabase
+    const client = getAdminClient();
+    const { error } = await client
       .from('banned_ips')
       .delete()
       .eq('ip_address', ip);
@@ -570,7 +675,8 @@ export const db = {
   },
 
   getBannedIPs: async () => {
-    const { data, error } = await supabase
+    const client = getAdminClient();
+    const { data, error } = await client
       .from('banned_ips')
       .select(`
         *,
@@ -588,7 +694,8 @@ export const db = {
   // ==================== ADMIN - USER MANAGEMENT ====================
 
   updateUserRole: async (userId: string, role: 'user' | 'admin'): Promise<boolean> => {
-    const { error } = await supabase
+    const client = getAdminClient();
+    const { error } = await client
       .from('users')
       .update({ role })
       .eq('id', userId);
@@ -601,16 +708,61 @@ export const db = {
   },
 
   deleteUser: async (userId: string): Promise<boolean> => {
-    const { error } = await supabase
-      .from('users')
-      .delete()
-      .eq('id', userId);
+    const client = getAdminClient();
 
-    if (error) {
+    // 1. Önce ilişkili verileri temizle
+    console.log('🗑️ Kullanıcı siliniyor:', userId);
+
+    try {
+      // Kullanıcının event_participants kayıtlarını sil
+      await client.from('event_participants').delete().eq('user_id', userId);
+
+      // Kullanıcının yorumlarını sil
+      await client.from('comments').delete().eq('user_id', userId);
+
+      // Kullanıcının arkadaşlık kayıtlarını sil (her iki yönde)
+      await client.from('friends').delete().eq('user_id', userId);
+      await client.from('friends').delete().eq('friend_id', userId);
+
+      // Kullanıcının bildirimlerini sil
+      await client.from('notifications').delete().eq('user_id', userId);
+
+      // Kullanıcının ban kayıtlarını sil
+      await client.from('banned_users').delete().eq('user_id', userId);
+
+      // Kullanıcının etkinliklerini sil
+      await client.from('events').delete().eq('user_id', userId);
+
+      // 2. Users tablosundan sil
+      const { error: userError } = await client
+        .from('users')
+        .delete()
+        .eq('id', userId);
+
+      if (userError) {
+        console.error('Delete user from users table error:', userError);
+        return false;
+      }
+
+      // 3. Supabase Auth'tan kullanıcıyı sil (admin client gerekli)
+      if (hasAdminClient && supabaseAdmin) {
+        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+        if (authError) {
+          console.error('Delete user from Auth error:', authError);
+          // Auth'tan silinemese bile users tablosundan silindi, yine de başarılı say
+          console.warn('⚠️ Kullanıcı users tablosundan silindi ancak Auth\'tan silinemedi');
+        } else {
+          console.log('✅ Kullanıcı hem veritabanından hem Auth\'tan silindi');
+        }
+      } else {
+        console.warn('⚠️ Admin client yok, sadece users tablosundan silindi');
+      }
+
+      return true;
+    } catch (error) {
       console.error('Delete user error:', error);
       return false;
     }
-    return true;
   },
 
   // ==================== CMS - PAGES ====================
@@ -661,9 +813,15 @@ export const db = {
     menu_order?: number;
     created_by: string;
   }) => {
-    const { data, error } = await supabase
+    const client = getAdminClient();
+
+    // Validate created_by is a valid UUID, otherwise use null
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const validCreatedBy = uuidRegex.test(page.created_by) ? page.created_by : null;
+
+    const { data, error } = await client
       .from('cms_pages')
-      .insert(page)
+      .insert({ ...page, created_by: validCreatedBy })
       .select()
       .single();
 
@@ -681,7 +839,8 @@ export const db = {
     show_in_menu?: boolean;
     menu_order?: number;
   }): Promise<boolean> => {
-    const { error } = await supabase
+    const client = getAdminClient();
+    const { error } = await client
       .from('cms_pages')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', pageId);
@@ -694,7 +853,8 @@ export const db = {
   },
 
   deleteCMSPage: async (pageId: string): Promise<boolean> => {
-    const { error } = await supabase
+    const client = getAdminClient();
+    const { error } = await client
       .from('cms_pages')
       .delete()
       .eq('id', pageId);
@@ -729,7 +889,8 @@ export const db = {
     styles: Record<string, any>;
     order_index: number;
   }) => {
-    const { data, error } = await supabase
+    const client = getAdminClient();
+    const { data, error } = await client
       .from('cms_modules')
       .insert(module)
       .select()
@@ -748,7 +909,8 @@ export const db = {
     styles?: Record<string, any>;
     order_index?: number;
   }): Promise<boolean> => {
-    const { error } = await supabase
+    const client = getAdminClient();
+    const { error } = await client
       .from('cms_modules')
       .update(updates)
       .eq('id', moduleId);
@@ -761,7 +923,8 @@ export const db = {
   },
 
   deleteCMSModule: async (moduleId: string): Promise<boolean> => {
-    const { error } = await supabase
+    const client = getAdminClient();
+    const { error } = await client
       .from('cms_modules')
       .delete()
       .eq('id', moduleId);
@@ -774,10 +937,11 @@ export const db = {
   },
 
   reorderCMSModules: async (pageId: string, moduleIds: string[]): Promise<boolean> => {
+    const client = getAdminClient();
     try {
       // Update each module's order_index
       for (let i = 0; i < moduleIds.length; i++) {
-        await supabase
+        await client
           .from('cms_modules')
           .update({ order_index: i })
           .eq('id', moduleIds[i])

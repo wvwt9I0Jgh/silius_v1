@@ -62,16 +62,23 @@ const AdminUsers: React.FC = () => {
     });
 
     const handleBanUser = async () => {
-        if (!selectedUser || !profile) return;
+        if (!selectedUser) return;
         setActionLoading(true);
         try {
-            await db.banUser(selectedUser.id, banReason, profile.id);
-            setBannedUserIds([...bannedUserIds, selectedUser.id]);
-            setShowBanModal(false);
-            setBanReason('');
-            setSelectedUser(null);
+            // Secret admin auth için placeholder ID kullan, yoksa profil ID
+            const adminId = profile?.id || 'secret-admin';
+            const success = await db.banUser(selectedUser.id, banReason, adminId);
+            if (success) {
+                setBannedUserIds([...bannedUserIds, selectedUser.id]);
+                setShowBanModal(false);
+                setBanReason('');
+                setSelectedUser(null);
+            } else {
+                alert('Ban işlemi başarısız! Konsolu kontrol edin.');
+            }
         } catch (error) {
             console.error('Ban error:', error);
+            alert('Ban işlemi hatası: ' + (error as Error).message);
         } finally {
             setActionLoading(false);
         }
@@ -90,17 +97,23 @@ const AdminUsers: React.FC = () => {
     };
 
     const handleIPBan = async () => {
-        if (!selectedUser || !profile || !ipAddress) return;
+        if (!selectedUser || !ipAddress) return;
         setActionLoading(true);
         try {
-            await db.banIP(ipAddress, selectedUser.id, banReason, profile.id);
-            setShowIPBanModal(false);
-            setBanReason('');
-            setIPAddress('');
-            setSelectedUser(null);
-            alert('IP adresi başarıyla banlandı!');
+            const adminId = profile?.id || 'secret-admin';
+            const success = await db.banIP(ipAddress, selectedUser.id, banReason, adminId);
+            if (success) {
+                setShowIPBanModal(false);
+                setBanReason('');
+                setIPAddress('');
+                setSelectedUser(null);
+                alert('IP adresi başarıyla banlandı!');
+            } else {
+                alert('IP ban işlemi başarısız!');
+            }
         } catch (error) {
             console.error('IP Ban error:', error);
+            alert('IP ban hatası: ' + (error as Error).message);
         } finally {
             setActionLoading(false);
         }
@@ -122,10 +135,15 @@ const AdminUsers: React.FC = () => {
         if (!confirm('Bu kullanıcıyı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
         setActionLoading(true);
         try {
-            await db.deleteUser(userId);
-            setUsers(users.filter(u => u.id !== userId));
+            const success = await db.deleteUser(userId);
+            if (success) {
+                setUsers(users.filter(u => u.id !== userId));
+            } else {
+                alert('Kullanıcı silme başarısız! RLS policy kontrol edin.');
+            }
         } catch (error) {
             console.error('Delete error:', error);
+            alert('Silme hatası: ' + (error as Error).message);
         } finally {
             setActionLoading(false);
         }

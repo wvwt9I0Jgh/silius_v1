@@ -75,11 +75,16 @@ const AdminVibes: React.FC = () => {
         if (!editingVibe) return;
         setActionLoading(true);
         try {
-            await db.updateEvent(editingVibe.id, editForm);
-            setVibes(vibes.map(v => v.id === editingVibe.id ? { ...v, ...editForm } : v));
-            setEditingVibe(null);
+            const success = await db.updateEvent(editingVibe.id, editForm);
+            if (success) {
+                setVibes(vibes.map(v => v.id === editingVibe.id ? { ...v, ...editForm } : v));
+                setEditingVibe(null);
+            } else {
+                alert('Vibe düzenleme başarısız! RLS policy kontrol edin.');
+            }
         } catch (error) {
             console.error('Edit error:', error);
+            alert('Düzenleme hatası: ' + (error as Error).message);
         } finally {
             setActionLoading(false);
         }
@@ -89,10 +94,15 @@ const AdminVibes: React.FC = () => {
         if (!confirm('Bu vibe\'ı silmek istediğinize emin misiniz?')) return;
         setActionLoading(true);
         try {
-            await db.deleteEvent(vibeId);
-            setVibes(vibes.filter(v => v.id !== vibeId));
+            const success = await db.deleteEvent(vibeId);
+            if (success) {
+                setVibes(vibes.filter(v => v.id !== vibeId));
+            } else {
+                alert('Vibe silme başarısız! RLS policy kontrol edin.');
+            }
         } catch (error) {
             console.error('Delete error:', error);
+            alert('Silme hatası: ' + (error as Error).message);
         } finally {
             setActionLoading(false);
         }

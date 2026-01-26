@@ -7,9 +7,11 @@ export interface User {
   username: string;
   bio?: string;
   avatar?: string;
+  age?: number;
   gender?: 'male' | 'female' | 'transgender' | 'lesbian' | 'gay' | 'bisexual_male' | 'bisexual_female' | 'prefer_not_to_say';
   role: 'user' | 'admin';
   hasAcceptedTerms?: boolean;
+  isProfileComplete?: boolean;
   created_at?: string;
 }
 
