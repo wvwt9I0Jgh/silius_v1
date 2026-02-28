@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../db';
+import { db } from '../../database';
 import { CMSPage, CMSModule, CMSModuleType, CMSModuleStyles } from '../../types';
 import {
     ArrowLeft, Save, Plus, Trash2, GripVertical, Eye, Settings,

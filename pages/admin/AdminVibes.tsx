@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../db';
+import { db } from '../../database';
 import { Event, User } from '../../types';
 import {
     Zap, ArrowLeft, Search, Edit3, Trash2, Eye,

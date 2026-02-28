@@ -13,6 +13,11 @@ export interface User {
   hasAcceptedTerms?: boolean;
   isProfileComplete?: boolean;
   created_at?: string;
+  vibeScore?: number; // Calculated: events created + events joined + time spent on platform
+  lastActiveAt?: string; // For time tracking
+  totalTimeSpent?: number; // Total minutes spent on platform
+  dailyVibeCount?: number; // Daily vibe creation count (max 3)
+  lastVibeDate?: string; // Last date vibes were created
 }
 
 export interface Event {
@@ -22,9 +27,12 @@ export interface Event {
   description: string;
   date: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
   image: string;
   category: 'party' | 'social' | 'coffee' | 'study' | 'sport' | 'game' | 'other';
   created_at?: string;
+  checkin_code?: string;
 }
 
 export interface EventParticipant {
@@ -32,6 +40,7 @@ export interface EventParticipant {
   event_id: string;
   user_id: string;
   joined_at?: string;
+  checked_in?: boolean;
 }
 
 export interface Comment {
@@ -54,6 +63,16 @@ export interface Friend {
   id: string;
   user_id: string;
   friend_id: string;
+  created_at?: string;
+}
+
+export interface EventGalleryPhoto {
+  id: string;
+  event_id: string;
+  user_id: string;
+  image_url: string;
+  caption?: string;
+  display_order?: number;
   created_at?: string;
 }
 
@@ -85,6 +104,11 @@ export interface Database {
         Row: Friend;
         Insert: Omit<Friend, 'id' | 'created_at'>;
         Update: Partial<Omit<Friend, 'id' | 'created_at'>>;
+      };
+      event_gallery: {
+        Row: EventGalleryPhoto;
+        Insert: Omit<EventGalleryPhoto, 'id' | 'created_at'>;
+        Update: Partial<Omit<EventGalleryPhoto, 'id' | 'created_at'>>;
       };
     };
   };

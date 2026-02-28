@@ -1,29 +1,50 @@
-
 import React, { useState, useEffect } from 'react';
-import { db } from '../db';
+import { db } from '../database';
 import { User } from '../types';
-import { UserPlus, Check, Search, Loader2, Mail, Calendar, X } from 'lucide-react';
+import { UserPlus, Check, Search, Loader2, Mail, Calendar, X, Sparkles, Zap } from 'lucide-react';
 
 interface UsersProps {
   user: User;
 }
 
+interface UserWithVibeScore {
+  user: User;
+  vibeScore: number;
+}
+
 const Users: React.FC<UsersProps> = ({ user }) => {
-  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<UserWithVibeScore[]>([]);
   const [friends, setFriends] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [addingFriend, setAddingFriend] = useState<string | null>(null);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserWithVibeScore | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [users, friendIds] = await Promise.all([
-        db.getUsers(),
-        db.getFriendIds(user.id)
-      ]);
-      setAllUsers(users.filter(u => u.id !== user.id));
+      let usersWithScores: UserWithVibeScore[] = [];
+
+      try {
+        usersWithScores = await db.getAllUsersWithVibeScores();
+      } catch (vibeError) {
+        console.error('Vibe score fetch failed, using fallback:', vibeError);
+        // Fallback: get regular users and add 0 score
+        const regularUsers = await db.getUsers();
+        usersWithScores = regularUsers.map(u => ({ user: u, vibeScore: 0 }));
+      }
+
+      // If still empty, try regular getUsers
+      if (usersWithScores.length === 0) {
+        console.log('⚠️ getAllUsersWithVibeScores returned empty, using fallback');
+        const regularUsers = await db.getUsers();
+        usersWithScores = regularUsers.map(u => ({ user: u, vibeScore: 0 }));
+      }
+
+      const friendIds = await db.getFriendIds(user.id);
+
+      // Filter out current user and already sorted by vibeScore (highest first)
+      setAllUsers(usersWithScores.filter(u => u.user.id !== user.id));
       setFriends(friendIds);
     } catch (error) {
       console.error('Users load error:', error);
@@ -37,28 +58,22 @@ const Users: React.FC<UsersProps> = ({ user }) => {
   }, [user.id]);
 
   const addFriend = async (friendId: string) => {
-    // Zaten arkadaş mı kontrol et
     if (friends.includes(friendId)) {
       console.log('⚠️ Already friends, skipping');
       return;
     }
 
-    console.log('🔄 Adding friend:', friendId);
     setAddingFriend(friendId);
 
     try {
       const success = await db.addFriend(friendId);
-      console.log('📋 addFriend result:', success);
 
       if (success) {
-        // Local state güncelle
         if (!friends.includes(friendId)) {
           setFriends([...friends, friendId]);
         }
-        console.log('✅ Friend added successfully!');
 
-        // Bildirim gönder
-        const friendUser = allUsers.find(u => u.id === friendId);
+        const friendUser = allUsers.find(u => u.user.id === friendId);
         if (friendUser) {
           try {
             await db.createNotification({
@@ -69,230 +84,269 @@ const Users: React.FC<UsersProps> = ({ user }) => {
               link: '/friends',
               from_user_id: user.id
             });
-            console.log('📩 Notification sent to:', friendUser.username);
           } catch (notifError) {
             console.warn('⚠️ Notification failed (continuing anyway):', notifError);
           }
         }
-
-        // Başarı mesajı göster
-        alert(`${friendUser?.firstName || 'Kullanıcı'} arkadaş olarak eklendi! ✅`);
       } else {
-        console.error('❌ addFriend returned false');
         alert('Arkadaş eklenemedi. Lütfen oturumunuzun aktif olduğundan emin olun ve tekrar deneyin.');
       }
     } catch (error) {
-      console.error('🔴 Add friend error:', error);
       alert('Bir hata oluştu: ' + (error as Error).message);
     } finally {
       setAddingFriend(null);
     }
   };
 
-  const filteredUsers = allUsers.filter(u =>
-    `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.username.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = allUsers.filter(item =>
+    `${item.user.firstName} ${item.user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+      <div className="min-h-screen flex items-center justify-center bg-bg-deep">
+        <div className="relative">
+          <div className="absolute inset-0 bg-rose-500 blur-xl opacity-20 animate-pulse"></div>
+          <Loader2 className="w-10 h-10 animate-spin text-rose-500 relative z-10" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 pb-32">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-black font-outfit uppercase tracking-tight text-white">İnsanları Keşfet</h1>
-          <p className="text-slate-400 font-medium">Yeni kişilerle bağlantı kur ve çevreni genişlet</p>
-        </div>
-
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-          <input
-            type="text"
-            placeholder="İsim veya @kullanıcıadı ara..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-900 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none text-white transition-all"
-          />
-        </div>
+    <div className="min-h-screen w-full relative bg-bg-deep overflow-hidden">
+      {/* Dynamic Background Elements */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-900/20 blur-[120px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-rose-900/10 blur-[100px] animate-pulse delay-700"></div>
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-        {filteredUsers.length === 0 ? (
-          <div className="col-span-full py-20 text-center glass-card rounded-[2rem]">
-            <p className="text-slate-500 text-lg italic font-bold">Aramanızla eşleşen kimse bulunamadı.</p>
+      <div className="max-w-7xl mx-auto px-4 py-8 pb-32 relative z-10">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+          <div className="relative">
+            <div className="absolute -top-10 -left-10 w-32 h-32 bg-indigo-500/10 blur-3xl rounded-full pointer-events-none"></div>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-black tracking-widest text-indigo-400 uppercase">
+                Topluluk
+              </span>
+              <div className="h-px w-12 bg-indigo-500/20"></div>
+            </div>
+            <h1 className="text-5xl md:text-7xl font-black font-outfit text-text-main tracking-tighter leading-[0.9]">
+              KEŞFET<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-rose-400">BAĞLAN.</span>
+            </h1>
           </div>
-        ) : (
-          filteredUsers.map(u => {
-            const isFriend = friends.includes(u.id);
-            return (
-              <div
-                key={u.id}
-                onClick={() => setSelectedUser(u)}
-                className="glass-card rounded-[2.5rem] p-8 border border-white/5 hover:border-indigo-500/30 transition-all flex flex-col items-center text-center group cursor-pointer"
+
+          <div className="w-full md:w-96 group relative">
+            <div className="absolute -inset-1 bg-gradient-to-r from-rose-500 via-indigo-500 to-rose-500 rounded-2xl opacity-20 group-hover:opacity-40 blur transition duration-500"></div>
+            <div className="relative flex items-center bg-bg-surface rounded-xl border border-white/10 group-focus-within:border-indigo-500/50 transition-colors">
+              <Search className="ml-4 text-text-muted group-focus-within:text-indigo-400 transition-colors" size={20} />
+              <input
+                type="text"
+                placeholder="Kullanıcı ara..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full bg-transparent border-none py-4 px-4 text-text-main placeholder:text-text-muted focus:outline-none text-sm font-bold font-outfit tracking-wide"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Grid Layout */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredUsers.length === 0 ? (
+            <div className="col-span-full py-32 text-center relative overflow-hidden rounded-[3rem] bg-white/5 border border-white/5">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-rose-500/10 blur-[80px] rounded-full pointer-events-none"></div>
+              <Search className="w-16 h-16 text-slate-600 mx-auto mb-6 opacity-50" />
+              <h3 className="text-2xl font-black text-text-main font-outfit mb-2">KİMSE BULUNAMADI</h3>
+              <p className="text-text-muted font-medium max-w-xs mx-auto">Aradığın kriterlere uygun bir kullanıcı yok gibi görünüyor.</p>
+            </div>
+          ) : (
+            filteredUsers.map((item, index) => {
+              const u = item.user;
+              const vibeScore = item.vibeScore;
+              const isFriend = friends.includes(u.id);
+              return (
+                <div
+                  key={u.id}
+                  onClick={() => setSelectedUser(item)}
+                  className="group relative bg-bg-surface/60 backdrop-blur-md border border-white/5 rounded-[2rem] p-6 hover:border-indigo-500/30 transition-all duration-500 hover:-translate-y-1 cursor-pointer overflow-hidden"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  {/* Vibe Score Badge */}
+                  <div className="absolute top-4 right-4 z-20">
+                    <div className="px-2 py-1 bg-gradient-to-r from-rose-500/20 to-indigo-500/20 rounded-lg border border-rose-500/20 flex items-center gap-1">
+                      <Zap size={10} className="text-rose-400" />
+                      <span className="text-[10px] font-black text-rose-400">{vibeScore.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Hover Glow */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/0 via-transparent to-rose-500/0 opacity-0 group-hover:opacity-10 transition-opacity duration-500"></div>
+
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-24 h-24 rounded-2xl p-1 bg-gradient-to-br from-white/10 to-transparent mb-6 group-hover:from-indigo-500/50 group-hover:to-rose-500/50 transition-colors duration-500">
+                      <div className="w-full h-full rounded-xl overflow-hidden bg-bg-surface relative">
+                        <img
+                          src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`}
+                          className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+                          alt={u.username}
+                        />
+                      </div>
+                    </div>
+
+                    <h3 className="text-lg font-black font-outfit text-text-main text-center mb-1 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-400 group-hover:to-rose-400 transition-all">
+                      {u.firstName} {u.lastName}
+                    </h3>
+                    <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-4">@{u.username}</p>
+
+                    <div className="w-full flex justify-center gap-2 mb-6">
+                      {u.age && (
+                        <span className="px-3 py-1 bg-white/5 rounded-lg text-[10px] font-bold text-text-muted">{u.age} YAŞ</span>
+                      )}
+                      {u.gender && u.gender !== 'prefer_not_to_say' && (
+                        <span className="px-3 py-1 bg-white/5 rounded-lg text-[10px] font-bold text-text-muted uppercase">
+                          {u.gender === 'male' ? '👨 ERKEK' :
+                            u.gender === 'female' ? '👩 KADIN' :
+                              u.gender === 'transgender' ? '⚧️ TRANS' :
+                                u.gender === 'lesbian' ? '👩‍❤️‍👩 LEZBİYEN' :
+                                  u.gender === 'gay' ? '👨‍❤️‍👨 GEY' :
+                                    u.gender === 'bisexual_male' ? '👨💜 BİSEKSÜEL' :
+                                      u.gender === 'bisexual_female' ? '👩💜 BİSEKSÜEL' :
+                                        '🌈 DİĞER'}
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!isFriend) addFriend(u.id);
+                      }}
+                      disabled={isFriend || addingFriend === u.id}
+                      className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-black uppercase text-[10px] tracking-widest transition-all ${isFriend
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'bg-white text-slate-950 hover:bg-indigo-500 hover:text-white hover:shadow-lg hover:shadow-indigo-500/25'
+                        }`}
+                    >
+                      {addingFriend === u.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : isFriend ? (
+                        <>BAĞLI <Check size={14} /></>
+                      ) : (
+                        <>EKLE <Sparkles size={14} /></>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Modal */}
+        {selectedUser && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-deep/80 backdrop-blur-xl animate-in fade-in duration-300"
+            onClick={() => setSelectedUser(null)}
+          >
+            <div
+              className="w-full max-w-md bg-bg-surface rounded-[2.5rem] p-8 border border-white/10 shadow-2xl relative overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Background Elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-500/20 to-transparent blur-[60px] pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-rose-500/20 to-transparent blur-[60px] pointer-events-none"></div>
+
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-text-muted hover:bg-white/10 hover:text-text-main transition-all z-20"
               >
-                <div className="relative mb-6">
-                  <div className="w-24 h-24 rounded-[2rem] bg-indigo-500/10 flex items-center justify-center overflow-hidden border-2 border-transparent group-hover:border-indigo-500/50 transition-all shadow-xl shadow-black/20">
+                <X size={18} />
+              </button>
+
+              <div className="relative z-10 flex flex-col items-center text-center">
+                <div className="w-32 h-32 rounded-[2rem] p-1 bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 mb-6 shadow-xl shadow-indigo-500/20">
+                  <div className="w-full h-full rounded-[1.8rem] overflow-hidden bg-bg-deep">
                     <img
-                      src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`}
+                      src={selectedUser.user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUser.user.username}`}
                       className="w-full h-full object-cover"
-                      alt={u.username}
+                      alt={selectedUser.user.username}
                     />
                   </div>
                 </div>
 
-                <h3 className="text-xl font-black font-outfit text-white group-hover:text-indigo-400 transition-colors uppercase tracking-tight">
-                  {u.firstName} {u.lastName}
-                </h3>
-                <p className="text-indigo-500 text-sm font-black mb-1 uppercase tracking-tighter">@{u.username}</p>
-                {u.age && (
-                  <p className="text-xs font-bold opacity-50 mb-2">
-                    🎂 {u.age} yaşında
-                  </p>
+                <h2 className="text-3xl font-black font-outfit text-text-main mb-1 uppercase tracking-tight">
+                  {selectedUser.user.firstName} {selectedUser.user.lastName}
+                </h2>
+                <div className="flex flex-col items-center gap-2 mb-6">
+                  <div className="flex items-center gap-2">
+                    <span className="text-indigo-400 text-xs font-black tracking-widest">@{selectedUser.user.username.toUpperCase()}</span>
+                    <span className="w-1 h-1 rounded-full bg-slate-600"></span>
+                    <span className="text-text-muted text-xs font-bold">LVL 1</span>
+                  </div>
+                  {selectedUser.user.gender && selectedUser.user.gender !== 'prefer_not_to_say' && (
+                    <span className="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                      {selectedUser.user.gender === 'male' ? '👨 ERKEK' :
+                        selectedUser.user.gender === 'female' ? '👩 KADIN' :
+                          selectedUser.user.gender === 'transgender' ? '⚧️ TRANSGENDER' :
+                            selectedUser.user.gender === 'lesbian' ? '👩‍❤️‍👩 LEZBİYEN' :
+                              selectedUser.user.gender === 'gay' ? '👨‍❤️‍👨 GEY' :
+                                selectedUser.user.gender === 'bisexual_male' ? '👨💜 BİSEKSÜEL ERKEK' :
+                                  selectedUser.user.gender === 'bisexual_female' ? '👩💜 BİSEKSÜEL KADIN' :
+                                    '🌈 DİĞER'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="w-full grid grid-cols-2 gap-3 mb-6">
+                  {selectedUser.user.created_at && (
+                    <div className="bg-white/5 rounded-2xl p-3 flex flex-col items-center gap-1">
+                      <Calendar size={16} className="text-indigo-400 mb-1" />
+                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">KATILIM</span>
+                      <span className="text-xs font-bold text-text-main">{new Date(selectedUser.user.created_at).toLocaleDateString('tr-TR')}</span>
+                    </div>
+                  )}
+                  <div className="bg-gradient-to-br from-rose-500/10 to-indigo-500/10 rounded-2xl p-3 flex flex-col items-center gap-1 border border-rose-500/20">
+                    <Zap size={16} className="text-rose-400 mb-1" />
+                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">VIBE SKOR</span>
+                    <span className="text-lg font-black text-rose-400">{selectedUser.vibeScore.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {selectedUser.user.bio && (
+                  <div className="w-full bg-bg-deep/50 rounded-2xl p-4 border border-white/5 mb-8">
+                    <p className="text-text-muted text-sm leading-relaxed font-medium">"{selectedUser.user.bio}"</p>
+                  </div>
                 )}
-                {u.gender && u.gender !== 'prefer_not_to_say' && (
-                  <p className="text-xs font-bold opacity-40 mb-3 uppercase tracking-wider">
-                    {u.gender === 'male' ? '👨 Erkek' :
-                      u.gender === 'female' ? '👩 Kadın' :
-                        u.gender === 'transgender' ? '⚧️ Transgender' :
-                          u.gender === 'lesbian' ? '👩‍❤️‍👩 Lezbiyen' :
-                            u.gender === 'gay' ? '👨‍❤️‍👨 Gey' :
-                              u.gender === 'bisexual_male' ? '👨💗💜💙 Biseksüel Erkek' :
-                                u.gender === 'bisexual_female' ? '👩💗💜💙 Biseksüel Kız' :
-                                  '🌈 Diğer'}
-                  </p>
-                )}
-                <p className="text-slate-400 text-sm mb-8 line-clamp-2 leading-relaxed h-10">{u.bio || "Henüz bir biyografi yazılmadı."}</p>
 
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Modal açılmasını engelle
-                    if (!isFriend) addFriend(u.id);
+                  onClick={() => {
+                    if (!friends.includes(selectedUser.user.id)) {
+                      addFriend(selectedUser.user.id);
+                    }
+                    setSelectedUser(null);
                   }}
-                  disabled={isFriend || addingFriend === u.id}
-                  className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black uppercase text-xs tracking-widest transition-all shadow-lg ${isFriend
+                  disabled={friends.includes(selectedUser.user.id)}
+                  className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 font-black uppercase text-xs tracking-[0.2em] transition-all shadow-xl ${friends.includes(selectedUser.user.id)
                     ? 'bg-emerald-500/10 text-emerald-400 cursor-default border border-emerald-500/20'
-                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20 disabled:opacity-50'
+                    : 'bg-gradient-to-r from-rose-600 to-indigo-600 text-white hover:scale-[1.02] active:scale-[0.98]'
                     }`}
                 >
-                  {addingFriend === u.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : isFriend ? (
-                    <>
-                      <Check size={18} strokeWidth={3} />
-                      BAĞLANDI
-                    </>
+                  {friends.includes(selectedUser.user.id) ? (
+                    <>BAĞLANTI MEVCUT <Check size={18} /></>
                   ) : (
-                    <>
-                      <UserPlus size={18} strokeWidth={3} />
-                      ARKADAŞ EKLE
-                    </>
+                    <>BAĞLANTI KUR <Sparkles size={18} /></>
                   )}
                 </button>
               </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* User Detail Modal */}
-      {selectedUser && (
-        <div
-          className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          onClick={() => setSelectedUser(null)}
-        >
-          <div
-            className="glass-card rounded-[3rem] p-10 max-w-md w-full border border-white/10 shadow-2xl relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setSelectedUser(null)}
-              className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center glass rounded-xl hover:bg-rose-500/20 transition-all"
-            >
-              <X size={20} className="text-slate-400" />
-            </button>
-
-            <div className="flex flex-col items-center text-center">
-              <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden bg-indigo-500/10 border-2 border-indigo-500/30 shadow-2xl mb-6">
-                <img
-                  src={selectedUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUser.username}`}
-                  className="w-full h-full object-cover"
-                  alt={selectedUser.username}
-                />
-              </div>
-
-              <h2 className="text-3xl font-black font-outfit uppercase tracking-tight text-white mb-2">
-                {selectedUser.firstName} {selectedUser.lastName}
-              </h2>
-              <p className="text-indigo-400 font-black text-sm uppercase tracking-wider mb-2">@{selectedUser.username}</p>
-              {selectedUser.age && (
-                <p className="text-sm font-bold opacity-60 mb-4">
-                  🎂 {selectedUser.age} yaşında
-                </p>
-              )}
-
-              {selectedUser.gender && selectedUser.gender !== 'prefer_not_to_say' && (
-                <p className="text-xs font-bold opacity-40 mb-6 uppercase tracking-wider">
-                  {selectedUser.gender === 'male' ? '👨 Erkek' :
-                    selectedUser.gender === 'female' ? '👩 Kadın' :
-                      selectedUser.gender === 'transgender' ? '⚧️ Transgender' :
-                        selectedUser.gender === 'lesbian' ? '👩‍❤️‍👩 Lezbiyen' :
-                          selectedUser.gender === 'gay' ? '👨‍❤️‍👨 Gey' :
-                            selectedUser.gender === 'bisexual_male' ? '👨💗💜💙 Biseksüel Erkek' :
-                              selectedUser.gender === 'bisexual_female' ? '👩💗💜💙 Biseksüel Kız' :
-                                '🌈 Diğer'}
-                </p>
-              )}
-
-              <div className="w-full space-y-4 mb-8">
-                <div className="glass rounded-2xl p-4 flex items-center gap-3">
-                  <Mail size={18} className="text-indigo-400" />
-                  <span className="text-sm text-slate-300">{selectedUser.email}</span>
-                </div>
-                {selectedUser.created_at && (
-                  <div className="glass rounded-2xl p-4 flex items-center gap-3">
-                    <Calendar size={18} className="text-indigo-400" />
-                    <span className="text-sm text-slate-300">
-                      Üyelik: {new Date(selectedUser.created_at).toLocaleDateString('tr-TR')}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {selectedUser.bio && (
-                <div className="w-full glass rounded-2xl p-6 mb-6">
-                  <p className="text-slate-300 text-sm leading-relaxed">{selectedUser.bio}</p>
-                </div>
-              )}
-
-              <button
-                onClick={() => {
-                  if (!friends.includes(selectedUser.id)) {
-                    addFriend(selectedUser.id);
-                  }
-                  setSelectedUser(null);
-                }}
-                disabled={friends.includes(selectedUser.id)}
-                className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black uppercase text-xs tracking-widest transition-all ${friends.includes(selectedUser.id)
-                  ? 'bg-emerald-500/10 text-emerald-400 cursor-default border border-emerald-500/20'
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20'
-                  }`}
-              >
-                {friends.includes(selectedUser.id) ? (
-                  <><Check size={18} strokeWidth={3} /> BAĞLANDI</>
-                ) : (
-                  <><UserPlus size={18} strokeWidth={3} /> ARKADAŞ EKLE</>
-                )}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

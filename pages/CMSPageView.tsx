@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { db } from '../db';
+import { db } from '../database';
 import { CMSPage, CMSModule, CMSModuleStyles } from '../types';
 import { Loader2, ArrowLeft } from 'lucide-react';
 

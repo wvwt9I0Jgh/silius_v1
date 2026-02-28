@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
-import { db } from '../db';
+import { db } from '../database';
 
 interface UserProfile {
   id: string;
@@ -16,6 +16,8 @@ interface UserProfile {
   role: 'user' | 'admin';
   hasAcceptedTerms?: boolean;
   isProfileComplete?: boolean;
+  kvkkConsent?: boolean;
+  kvkkConsentDate?: string;
 }
 
 interface AuthContextType {
@@ -68,6 +70,52 @@ const saveProfileToCache = (profile: UserProfile) => {
   } catch { }
 };
 
+// OAuth hatalarını URL'den algıla ve temizle
+const detectOAuthError = (): string | null => {
+  try {
+    // Query parametrelerinden hata kontrolü
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorDesc = urlParams.get('error_description');
+    const errorCode = urlParams.get('error_code');
+
+    // Hash fragment'tan hata kontrolü (HashRouter ile çakışma durumu)
+    const hash = window.location.hash;
+    let hashErrorDesc: string | null = null;
+    if (hash && hash.includes('error=')) {
+      const hashStr = hash.startsWith('#') ? hash.substring(1) : hash;
+      // HashRouter route'u değilse (/ ile başlamıyorsa) bu bir OAuth hatasıdır
+      if (!hashStr.startsWith('/')) {
+        const hashParams = new URLSearchParams(hashStr);
+        hashErrorDesc = hashParams.get('error_description');
+      }
+    }
+
+    const description = errorDesc || hashErrorDesc;
+    if (description) {
+      // URL'yi temizle - hata parametrelerini kaldır
+      const cleanUrl = window.location.origin + window.location.pathname + '#/';
+      window.history.replaceState({}, '', cleanUrl);
+
+      if (description.includes('Unable to exchange external code')) {
+        return 'Google ile giriş başarısız oldu. Supabase Dashboard\'da Google OAuth ayarlarınızı kontrol edin:\n1. Google Cloud Console\'da Client ID ve Client Secret doğru mu?\n2. Authorized redirect URI olarak Supabase callback URL\'si eklendi mi?\n3. Google OAuth uygulaması "Production" modunda mı?';
+      }
+      return `Google ile giriş başarısız: ${decodeURIComponent(description)}`;
+    }
+
+    // Başarılı OAuth dönüşü - access_token hash'te varsa URL'yi temizle
+    if (hash && hash.includes('access_token=')) {
+      // Supabase detectSessionInUrl zaten token'ı işleyecek
+      // Sadece URL'yi temizle
+      setTimeout(() => {
+        window.history.replaceState({}, '', window.location.origin + window.location.pathname + '#/home');
+      }, 100);
+    }
+  } catch (e) {
+    console.warn('OAuth error detection failed:', e);
+  }
+  return null;
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -75,6 +123,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [isBanned, setIsBanned] = useState(false);
   const [banInfo, setBanInfo] = useState<{ reason: string; bannedAt: string } | null>(null);
+
+  // INITIAL_SESSION event'i geldikten sonra gelen SIGNED_IN gerçek bir giriş demektir
+  const initialSessionFiredRef = React.useRef(false);
+
+  // OAuth hatalarını algıla ve session storage'a kaydet (Auth sayfasında gösterilecek)
+  useEffect(() => {
+    const oauthError = detectOAuthError();
+    if (oauthError) {
+      console.error('🔴 OAuth Error:', oauthError);
+      sessionStorage.setItem('silius_oauth_error', oauthError);
+      // Auth sayfasına yönlendir
+      window.location.hash = '#/auth';
+    }
+  }, []);
 
   const fetchProfile = async (userId: string, useCache = true): Promise<UserProfile | null> => {
     // Önce cache'den kontrol et
@@ -137,6 +199,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setProfile(profileData);
     }
   };
+
+  // User activity tracking
+  useEffect(() => {
+    if (user?.id) {
+      const updateActivity = async () => {
+        try {
+          await supabase.from('users').update({
+            lastActiveAt: new Date().toISOString()
+          }).eq('id', user.id);
+        } catch (e) {
+          // ignore error
+        }
+      };
+      
+      updateActivity();
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     let mounted = true;
@@ -226,6 +305,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (!mounted) return;
 
         console.log('🔄 Auth state changed:', event, session?.user?.email);
+
+        // INITIAL_SESSION: sayfa yüklendiğinde mevcut session restore edildi
+        if (event === 'INITIAL_SESSION') {
+          initialSessionFiredRef.current = true;
+        }
+
+        // SIGNED_IN: yalnızca INITIAL_SESSION sonrası gelirse gerçek yeni girişdir
+        // (token refresh veya OAuth geri dönüşü)
+        if (event === 'SIGNED_IN' && session?.user && initialSessionFiredRef.current) {
+          const currentHash = window.location.hash;
+          const isOAuthRedirect =
+            currentHash.includes('access_token') ||
+            currentHash.includes('error=') ||
+            !currentHash ||
+            currentHash === '#';
+          // Landing sayfasındaysa veya OAuth redirect ise → home'a yönlendir
+          if (isOAuthRedirect || currentHash === '#/') {
+            setTimeout(() => {
+              window.location.hash = '#/home';
+            }, 200);
+          }
+        }
 
         setSession(session);
         setUser(session?.user ?? null);
@@ -353,8 +454,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('✅ Auth sign up success:', authData.user.id);
 
-      // 2. ✅ YENİ: public.users tablosuna da kayıt ekle
-      // isProfileComplete: false ile kaydediyoruz ki ProfileSetup sayfası açılsın
+      // 2. public.users tablosuna da kayıt ekle
       const { error: profileError } = await supabase
         .from('users')
         .upsert({
@@ -367,12 +467,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           bio: "Silius'ta yeni bir macera başlıyor...",
           role: 'user',
           hasAcceptedTerms: true,
-          isProfileComplete: false  // ← Bu sayede ProfileSetup sayfası açılacak!
+          isProfileComplete: false
         }, { onConflict: 'id' });
 
       if (profileError) {
         console.error('⚠️ Profile creation error (user may need to verify email first):', profileError);
-        // E-posta doğrulaması gerekebilir, bu durumda ilk giriş sonrası profil oluşturulacak
       } else {
         console.log('✅ Profile created in users table with isProfileComplete: false');
       }
@@ -399,11 +498,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const signOut = async () => {
+    // Önce profile cache'ini temizle
+    localStorage.removeItem(PROFILE_CACHE_KEY);
+    localStorage.removeItem(CACHE_EXPIRY_KEY);
+
     await supabase.auth.signOut();
+
     setUser(null);
     setProfile(null);
     setSession(null);
-    // Landing sayfasına yönlendir (HashRouter için)
+    initialSessionFiredRef.current = false;
+
+    // Landing sayfasına yönlendir
     window.location.hash = '#/';
   };
 
@@ -413,7 +519,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/#/home' // Başarılı girişten sonra ana sayfaya yönlendir
+          redirectTo: window.location.origin // Hash kullanma - Supabase kendi hash parametrelerini ekler
         }
       });
 

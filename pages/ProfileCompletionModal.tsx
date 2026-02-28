@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../db';
+import { db } from '../database';
 import { User, Calendar, Heart, Loader2, Sparkles } from 'lucide-react';
 
 interface ProfileCompletionModalProps {

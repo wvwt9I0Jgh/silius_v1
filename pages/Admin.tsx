@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../db';
+import { db } from '../database';
 import {
     Users, FileText, Settings, Shield, Ban, Globe,
     LayoutDashboard, ArrowLeft, Zap, ChevronRight,

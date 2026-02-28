@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../db';
+import { db } from '../../database';
 import { User } from '../../types';
 import {
     Users, ArrowLeft, Search, Shield, Ban, UserCheck,

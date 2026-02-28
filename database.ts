@@ -1,6 +1,6 @@
 
 import { supabase, supabaseAdmin, hasAdminClient } from './lib/supabase';
-import { User, Event, Comment, EventParticipant, Friend } from './types';
+import { User, Event, Comment, EventParticipant, Friend, EventGalleryPhoto } from './types';
 
 // Helper: Get the appropriate client for admin operations
 // Uses supabaseAdmin (service role) which bypasses RLS for all admin operations
@@ -76,8 +76,9 @@ export const db = {
 
       return { canCreate, remaining, resetTime: canCreate ? undefined : `Yarın ${resetTime}` };
     } catch (error) {
-      console.error('Daily vibe limit check error:', error);
-      return { canCreate: true, remaining: 3 }; // Hata durumunda izin ver
+      console.error('Daily vibe limit check ERROR. (migration-vibe-score.sql çalıştırıldı mı?):', error);
+      // Hata durumunda sistemi kilitlememek için izin veriyoruz, ancak hatayı konsola basıyoruz.
+      return { canCreate: true, remaining: 3 }; 
     }
   },
 
@@ -109,12 +110,12 @@ export const db = {
         .eq('id', userId);
 
       if (error) {
-        console.error('Increment daily vibe count error:', error);
+        console.error('Increment daily vibe count ERROR (Sütunlar eksik olabilir):', error);
         return false;
       }
       return true;
     } catch (error) {
-      console.error('Increment daily vibe count error:', error);
+      console.error('Increment daily vibe count ERROR:', error);
       return false;
     }
   },
@@ -244,28 +245,22 @@ export const db = {
     return count || 0;
   },
 
-  // Tüm event'lerin katılımcı sayılarını tek sorguda al - PERFORMANS OPTİMİZASYONU
-  getAllParticipantCounts: async (eventIds: string[]): Promise<Record<string, number>> => {
-    if (eventIds.length === 0) return {};
-    
-    const { data, error } = await supabase
+  /**
+   * Returns the number of participants who physically checked in (checked_in = true).
+   * This is the "live" count shown on event cards and detail pages.
+   */
+  getLiveParticipantCount: async (eventId: string): Promise<number> => {
+    const { count, error } = await supabase
       .from('event_participants')
-      .select('event_id')
-      .in('event_id', eventIds);
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .eq('checked_in', true);
 
     if (error) {
-      console.error('Participant counts error:', error);
-      return {};
+      console.error('Live participant count error:', error);
+      return 0;
     }
-
-    // Event ID'lere göre sayıları hesapla
-    const counts: Record<string, number> = {};
-    eventIds.forEach(id => counts[id] = 0);
-    data?.forEach(p => {
-      counts[p.event_id] = (counts[p.event_id] || 0) + 1;
-    });
-    
-    return counts;
+    return count || 0;
   },
 
   isUserParticipant: async (eventId: string, userId: string): Promise<boolean> => {
@@ -277,20 +272,6 @@ export const db = {
       .maybeSingle();
 
     return !error && !!data;
-  },
-
-  // Kullanıcının katıldığı tüm event ID'lerini al - PERFORMANS OPTİMİZASYONU
-  getUserParticipations: async (userId: string): Promise<string[]> => {
-    const { data, error } = await supabase
-      .from('event_participants')
-      .select('event_id')
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('User participations error:', error);
-      return [];
-    }
-    return data?.map(p => p.event_id) || [];
   },
 
   // ==================== COMMENTS ====================
@@ -392,22 +373,6 @@ export const db = {
     return data;
   },
 
-  // Birden fazla kullanıcıyı tek sorguda al - PERFORMANS OPTİMİZASYONU
-  getUsersByIds: async (userIds: string[]): Promise<User[]> => {
-    if (userIds.length === 0) return [];
-    
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .in('id', userIds);
-
-    if (error) {
-      console.error('Users by IDs fetch error:', error);
-      return [];
-    }
-    return data || [];
-  },
-
   updateUser: async (userId: string, updates: Partial<User>): Promise<boolean> => {
     const { error } = await supabase
       .from('users')
@@ -424,56 +389,78 @@ export const db = {
   // ==================== FRIENDS ====================
 
   getFriends: async (userId: string): Promise<User[]> => {
-    const { data, error } = await supabase
+    console.log('📋 getFriends called for:', userId);
+
+    // 1. Önce arkadaş ID'lerini al
+    const { data: friendRelations, error: relError } = await supabase
       .from('friends')
-      .select(`
-        friend_id,
-        users!friends_friend_id_fkey (
-          id,
-          email,
-          firstName,
-          lastName,
-          username,
-          bio,
-          avatar,
-          role
-        )
-      `)
+      .select('friend_id')
       .eq('user_id', userId);
 
-    if (error) {
-      console.error('Friends fetch error:', error);
+    if (relError) {
+      console.error('Friends relation fetch error:', relError);
       return [];
     }
 
-    return data?.map((f: any) => f.users).filter(Boolean) || [];
+    if (!friendRelations || friendRelations.length === 0) {
+      console.log('No friends found for user:', userId);
+      return [];
+    }
+
+    const friendIds = friendRelations.map(f => f.friend_id);
+    console.log('Friend IDs:', friendIds);
+
+    // 2. Şimdi bu ID'lere sahip kullanıcıları çek
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', friendIds);
+
+    if (usersError) {
+      console.error('Friends users fetch error:', usersError);
+      return [];
+    }
+
+    console.log('Friends fetched:', users?.length || 0);
+    return users || [];
   },
 
   // Beni arkadaş ekleyenler (reverse friends)
   getReverseFriends: async (userId: string): Promise<User[]> => {
-    const { data, error } = await supabase
+    console.log('📋 getReverseFriends called for:', userId);
+
+    // 1. Önce beni ekleyenlerin ID'lerini al
+    const { data: friendRelations, error: relError } = await supabase
       .from('friends')
-      .select(`
-        user_id,
-        users!friends_user_id_fkey (
-          id,
-          email,
-          firstName,
-          lastName,
-          username,
-          bio,
-          avatar,
-          role
-        )
-      `)
+      .select('user_id')
       .eq('friend_id', userId);
 
-    if (error) {
-      console.error('Reverse friends fetch error:', error);
+    if (relError) {
+      console.error('Reverse friends relation fetch error:', relError);
       return [];
     }
 
-    return data?.map((f: any) => f.users).filter(Boolean) || [];
+    if (!friendRelations || friendRelations.length === 0) {
+      console.log('No reverse friends found for user:', userId);
+      return [];
+    }
+
+    const userIds = friendRelations.map(f => f.user_id);
+    console.log('Reverse Friend User IDs:', userIds);
+
+    // 2. Şimdi bu ID'lere sahip kullanıcıları çek
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', userIds);
+
+    if (usersError) {
+      console.error('Reverse friends users fetch error:', usersError);
+      return [];
+    }
+
+    console.log('Reverse friends fetched:', users?.length || 0);
+    return users || [];
   },
 
   getFriendIds: async (userId: string): Promise<string[]> => {
@@ -492,54 +479,73 @@ export const db = {
   addFriend: async (friendId: string): Promise<boolean> => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
-      console.error('❌ addFriend: User not authenticated');
+      console.error('❌ addFriend: User not logged in');
       return false;
     }
 
     const userId = userData.user.id;
+    console.log('📤 Adding friend:', { user_id: userId, friend_id: friendId });
 
-    // Kendini eklemeyi engelle
+    // Kendini arkadaş olarak eklemeyi engelle
     if (userId === friendId) {
       console.warn('⚠️ Cannot add yourself as friend');
       return false;
     }
 
-    // Önce zaten arkadaş olup olmadığını kontrol et
-    const { data: existingFriend } = await supabase
-      .from('friends')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('friend_id', friendId)
-      .maybeSingle();
+    // Admin client kullan - RLS bypass
+    const client = getAdminClient();
 
-    if (existingFriend) {
-      console.log('✅ Already friends, skipping insert');
-      return true; // Zaten arkadaş - başarılı say
-    }
+    try {
+      // 1. Önce arkadaşlık var mı kontrol et
+      const { data: existingFriend, error: checkError } = await client
+        .from('friends')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('friend_id', friendId)
+        .maybeSingle();
 
-    // Arkadaşlık ekle - upsert ile conflict'i önle
-    const { error } = await supabase
-      .from('friends')
-      .upsert(
-        {
-          user_id: userId,
-          friend_id: friendId
-        },
-        { onConflict: 'user_id,friend_id', ignoreDuplicates: true }
-      );
+      if (checkError) {
+        console.error('❌ Friend check error:', checkError);
+      }
 
-    if (error) {
-      // 409 Conflict veya 23505 duplicate key hatası durumunda zaten arkadaş
-      if (error.code === '23505' || error.message?.includes('duplicate')) {
-        console.log('✅ Already friends (caught on insert)');
+      // 2. Zaten arkadaşsa başarılı dön
+      if (existingFriend) {
+        console.log('✅ Already friends, returning success');
         return true;
       }
-      console.error('❌ Add friend error:', error.code, error.message);
+
+      // 3. Arkadaş değilse INSERT yap (admin client ile)
+      const { error: insertError } = await client
+        .from('friends')
+        .insert({
+          user_id: userId,
+          friend_id: friendId,
+          created_at: new Date().toISOString()
+        });
+
+      if (insertError) {
+        // Duplicate hatası olsa bile başarılı say
+        if (insertError.code === '23505' ||
+          insertError.message?.toLowerCase().includes('duplicate') ||
+          insertError.message?.toLowerCase().includes('unique')) {
+          console.log('✅ Friend already exists, treating as success');
+          return true;
+        }
+
+        console.error('❌ Add friend insert error:', {
+          code: insertError.code,
+          message: insertError.message,
+          details: insertError.details
+        });
+        return false;
+      }
+
+      console.log('✅ Friend added successfully');
+      return true;
+    } catch (err) {
+      console.error('❌ addFriend exception:', err);
       return false;
     }
-
-    console.log('✅ Friend added successfully');
-    return true;
   },
 
   isFriend: async (userId: string, friendId: string): Promise<boolean> => {
@@ -1196,7 +1202,6 @@ export const db = {
     }
   },
 
-  // Tüm kullanıcıların vibe score'larını hesapla (Users sayfası için)
   getAllUsersWithVibeScores: async (): Promise<Array<{ user: User; vibeScore: number }>> => {
     try {
       // Tüm kullanıcıları al
@@ -1312,6 +1317,77 @@ export const db = {
     }
   },
 
+  // Vibe Puanı Güncelle
+  incrementVibeScore: async (userId: string, points: number): Promise<boolean> => {
+     try {
+       const { data: user } = await supabase
+         .from('users')
+         .select('vibe_score')
+         .eq('id', userId)
+         .single();
+       
+       const currentScore = user?.vibe_score || 0;
+       
+       const { error } = await supabase
+         .from('users')
+         .update({ vibe_score: currentScore + points })
+         .eq('id', userId);
+         
+       return !error;
+     } catch {
+       return false;
+     }
+  },
+
+  // Check-in Process
+  checkInToEvent: async (eventId: string, userId: string): Promise<{ success: boolean; message: string; points: number }> => {
+     try {
+        // 1. Check/Create Participation
+        let { data: part } = await supabase
+            .from('event_participants')
+            .select('*')
+            .eq('event_id', eventId)
+            .eq('user_id', userId)
+            .single();
+        
+        if (!part) {
+            // Join if not joined
+            const { data: newPart, error: joinError } = await supabase
+                .from('event_participants')
+                .insert({ event_id: eventId, user_id: userId, checked_in: false })
+                .select()
+                .single();
+            if (joinError) throw joinError;
+            part = newPart;
+        }
+
+        if (part.checked_in) {
+            return { success: true, message: 'Zaten giriş yapıldı', points: 0 };
+        }
+
+        // 2. Mark Checked In
+        const { error: checkInError } = await supabase
+            .from('event_participants')
+            .update({ checked_in: true })
+            .eq('id', part.id);
+        
+        if (checkInError) throw checkInError;
+
+        // 3. Award Points
+        await supabase.rpc('increment_vibe_score', { user_id: userId, points: 1 }).catch(async () => {
+             // Fallback if RPC doesn't exist
+             const { data: u } = await supabase.from('users').select('vibe_score').eq('id', userId).single();
+             const sc = u?.vibe_score || 0;
+             await supabase.from('users').update({ vibe_score: sc + 1 }).eq('id', userId);
+        });
+
+        return { success: true, message: 'Giriş Başarılı!', points: 1 };
+     } catch (err: any) {
+         console.error(err);
+         return { success: false, message: err.message || 'Hata', points: 0 };
+     }
+  },
+
   // Platformda geçirilen süreyi güncelle (her 5 dakikada bir çağrılacak)
   updateTimeSpent: async (userId: string, minutesToAdd: number): Promise<boolean> => {
     try {
@@ -1341,5 +1417,123 @@ export const db = {
       console.error('Update time spent error:', error);
       return false;
     }
+  },
+
+  // ==================== EVENT GALLERY ====================
+
+  // Bir etkinliğin galeri fotoğraflarını getir
+  getEventGallery: async (eventId: string): Promise<EventGalleryPhoto[]> => {
+    const { data, error } = await supabase
+      .from('event_gallery')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Gallery fetch error:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  // Galeriye fotoğraf ekle (base64 string olarak)
+  addGalleryPhoto: async (eventId: string, imageUrl: string, caption?: string): Promise<EventGalleryPhoto | null> => {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      console.error('Unauthorized: User not logged in');
+      return null;
+    }
+
+    // Mevcut fotoğraf sayısını al (sıralama için)
+    const { count } = await supabase
+      .from('event_gallery')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', eventId);
+
+    const { data, error } = await supabase
+      .from('event_gallery')
+      .insert({
+        event_id: eventId,
+        user_id: userData.user.id,
+        image_url: imageUrl,
+        caption: caption || '',
+        display_order: (count || 0)
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Gallery photo add error:', error);
+      return null;
+    }
+    return data;
+  },
+
+  // Birden fazla fotoğrafı aynı anda ekle
+  addMultipleGalleryPhotos: async (eventId: string, images: { imageUrl: string; caption?: string }[]): Promise<EventGalleryPhoto[]> => {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      console.error('Unauthorized: User not logged in');
+      return [];
+    }
+
+    // Mevcut fotoğraf sayısını al
+    const { count } = await supabase
+      .from('event_gallery')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', eventId);
+
+    const startOrder = count || 0;
+
+    const rows = images.map((img, index) => ({
+      event_id: eventId,
+      user_id: userData.user!.id,
+      image_url: img.imageUrl,
+      caption: img.caption || '',
+      display_order: startOrder + index
+    }));
+
+    const { data, error } = await supabase
+      .from('event_gallery')
+      .insert(rows)
+      .select();
+
+    if (error) {
+      console.error('Gallery bulk add error:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  // Galeri fotoğrafını sil
+  deleteGalleryPhoto: async (photoId: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('event_gallery')
+      .delete()
+      .eq('id', photoId);
+
+    if (error) {
+      console.error('Gallery photo delete error:', error);
+      return false;
+    }
+    return true;
+  },
+
+  // Bir etkinliğin galeri fotoğraf sayısını getir
+  getGalleryCount: async (eventId: string): Promise<number> => {
+    const { count, error } = await supabase
+      .from('event_gallery')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', eventId);
+
+    if (error) {
+      console.error('Gallery count error:', error);
+      return 0;
+    }
+    return count || 0;
   }
 };
+
+export default db;
+

@@ -16,16 +16,17 @@ if (supabaseServiceKey) {
 }
 
 // Normal client for authenticated users
-// sessionStorage: Tarayıcı kapanınca session silinir (Kullanıcı iş kuralı)
 export const supabase = createClient(
   supabaseUrl || '',
   supabaseAnonKey || '',
   {
     auth: {
-      storage: sessionStorage,          // 🔑 TARAYICI KAPANINCA ÇIKIŞ YAP
-      persistSession: true,             // Aynı sekmede yenilemelerde devam et
-      autoRefreshToken: true,           // Token otomatik yenilensin
-      detectSessionInUrl: true,         // URL'deki token'ı algıla (OAuth için)
+      // sessionStorage: tarayıcı kapanınca oturum temizlenir → her açılışta Landing sayfası
+      storage: sessionStorage,
+      persistSession: true,        // Aynı sekmede sayfa yenilemelerinde oturum korunur
+      autoRefreshToken: true,      // Token otomatik yenilenir
+      detectSessionInUrl: true,    // URL'deki OAuth token'ını algıla
+      flowType: 'implicit',        // PKCE code exchange sorununu bypass eder
     }
   }
 );

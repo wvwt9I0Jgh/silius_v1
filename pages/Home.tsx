@@ -1,15 +1,15 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { db } from '../db';
+import { db } from '../database';
 import { Event, User } from '../types';
-import { Plus, MapPin, Calendar, Search, Zap, Coffee, Users as UsersIcon, X, TrendingUp, Brain, Trophy, Gamepad2, Sparkles, Image as ImageIcon, Camera, Loader2 } from 'lucide-react';
+import { Plus, MapPin, Calendar, Search, Zap, Coffee, Users as UsersIcon, X, TrendingUp, Brain, Trophy, Gamepad2, Sparkles, Image as ImageIcon, Camera, Loader2, ArrowRight } from 'lucide-react';
+import LocationPicker from '../components/LocationPicker';
 
 interface HomeProps {
   user: User;
 }
 
-type SortOption = 'newest' | 'oldest' | 'popular';
+type SortOption = 'created_desc' | 'popular' | 'date_desc' | 'date_asc' | 'vibe_score';
 
 const CATEGORIES = [
   { id: 'all', label: 'HEPSİ', icon: Sparkles },
@@ -23,26 +23,101 @@ const CATEGORIES = [
 
 interface EventWithParticipants extends Event {
   participantCount: number;
+  liveCount: number;
+  ownerVibeScore?: number;
 }
 
 const Home: React.FC<HomeProps> = ({ user }) => {
   const [events, setEvents] = useState<EventWithParticipants[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [filter, setFilter] = useState('all');
-  const [sortOrder, setSortOrder] = useState<SortOption>('newest');
+  const [sortOrder, setSortOrder] = useState<SortOption>('created_desc');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [vibeLimit, setVibeLimit] = useState({ canCreate: true, remaining: 3, resetTime: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
   const [newEvent, setNewEvent] = useState({
     title: '',
     description: '',
     location: '',
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
     date: '',
     image: '',
     category: 'party' as Event['category']
   });
+
+  // Galeri fotoğrafları state
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+
+  // Gece yarısına kalan süreyi hesapla
+  const calculateTimeUntilMidnight = () => {
+    const now = new Date();
+    const midnight = new Date();
+    midnight.setDate(midnight.getDate() + 1);
+    midnight.setHours(0, 0, 0, 0);
+
+    const diff = midnight.getTime() - now.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    return { hours, minutes, seconds };
+  };
+
+  // Countdown başlat
+  const startCountdown = () => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+    }
+
+    setCountdown(calculateTimeUntilMidnight());
+
+    countdownRef.current = setInterval(() => {
+      setCountdown(calculateTimeUntilMidnight());
+    }, 1000);
+  };
+
+  // Cleanup countdown
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
+    };
+  }, []);
+
+  // Limit modal açıldığında countdown başlat
+  useEffect(() => {
+    if (showLimitModal) {
+      startCountdown();
+    } else if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+    }
+  }, [showLimitModal]);
+
+  // Günlük limit kontrolü
+  const checkVibeLimit = async () => {
+    const limit = await db.checkDailyVibeLimit(user.id);
+    setVibeLimit(limit);
+    return limit;
+  };
+
+  // Modal açma fonksiyonu - limit kontrolü ile
+  const openCreateModal = async () => {
+    const limit = await checkVibeLimit();
+    if (!limit.canCreate) {
+      setShowLimitModal(true);
+      return;
+    }
+    setShowCreateModal(true);
+  };
 
   // Cache keys
   const EVENTS_CACHE_KEY = 'silius_events_cache';
@@ -50,7 +125,6 @@ const Home: React.FC<HomeProps> = ({ user }) => {
   const CACHE_DURATION = 2 * 60 * 1000; // 2 dakika
 
   const loadEvents = async (useCache = true) => {
-    // Önce cache'den yükle
     if (useCache) {
       try {
         const expiry = localStorage.getItem(EVENTS_CACHE_EXPIRY);
@@ -59,8 +133,6 @@ const Home: React.FC<HomeProps> = ({ user }) => {
           const cachedEvents = JSON.parse(cached);
           setEvents(cachedEvents);
           setIsLoading(false);
-
-          // Arka planda güncelle
           loadEvents(false);
           return;
         }
@@ -69,20 +141,43 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
     setIsLoading(true);
     try {
-      const eventsData = await db.getEvents();
+      // Get events with owner vibe scores
+      let eventsData: Event[] = [];
+      let vibeScoreMap: Record<string, number> = {};
 
-      // Participant sayılarını paralel olarak al
+      try {
+        const eventsWithScores = await db.getEventsWithOwnerVibeScores();
+        if (eventsWithScores && eventsWithScores.length > 0) {
+          eventsData = eventsWithScores.map(e => e.event);
+          eventsWithScores.forEach(e => {
+            vibeScoreMap[e.event.id] = e.ownerVibeScore;
+          });
+        } else {
+          // Fallback to regular getEvents if new function returns empty
+          console.log('⚠️ getEventsWithOwnerVibeScores returned empty, using fallback');
+          eventsData = await db.getEvents();
+        }
+      } catch (vibeError) {
+        console.error('Vibe score fetch failed, using fallback:', vibeError);
+        eventsData = await db.getEvents();
+      }
+
       const countPromises = eventsData.map(e => db.getParticipantCount(e.id));
-      const counts = await Promise.all(countPromises);
+      const liveCountPromises = eventsData.map(e => db.getLiveParticipantCount(e.id));
+      const [counts, liveCounts] = await Promise.all([
+        Promise.all(countPromises),
+        Promise.all(liveCountPromises),
+      ]);
 
       const eventsWithCounts = eventsData.map((event, index) => ({
         ...event,
-        participantCount: counts[index]
+        participantCount: counts[index],
+        liveCount: liveCounts[index],
+        ownerVibeScore: vibeScoreMap[event.id] || 0
       }));
 
       setEvents(eventsWithCounts);
 
-      // Cache'e kaydet
       try {
         localStorage.setItem(EVENTS_CACHE_KEY, JSON.stringify(eventsWithCounts));
         localStorage.setItem(EVENTS_CACHE_EXPIRY, String(Date.now() + CACHE_DURATION));
@@ -96,6 +191,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
   useEffect(() => {
     loadEvents();
+    checkVibeLimit(); // Limit kontrolü
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,8 +205,37 @@ const Home: React.FC<HomeProps> = ({ user }) => {
     }
   };
 
+  // Galeri fotoğrafları ekleme
+  const handleGalleryFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const fileArray = Array.from(files) as File[];
+    fileArray.forEach((file: File) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setGalleryImages(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+    // Input'u resetle (aynı dosyayı tekrar seçebilsin)
+    e.target.value = '';
+  };
+
+  // Galeri fotoğrafı sil
+  const removeGalleryImage = (index: number) => {
+    setGalleryImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Mekan seçimi kontrolü
+    if (!newEvent.location || !newEvent.latitude || !newEvent.longitude) {
+      alert('Lütfen bir ilçe ve mekan seçin.');
+      return;
+    }
+    
     setIsCreating(true);
 
     try {
@@ -127,22 +252,38 @@ const Home: React.FC<HomeProps> = ({ user }) => {
       const savedEvent = await db.saveEvent({
         ...newEvent,
         user_id: user.id,
-        image: newEvent.image || defaultImages[newEvent.category] || defaultImages.other
+        image: newEvent.image || defaultImages[newEvent.category] || defaultImages.other,
+        latitude: newEvent.latitude,
+        longitude: newEvent.longitude
       });
 
       if (savedEvent) {
-        console.log('✅ Event created:', savedEvent.id);
-        // Oluşturan kişiyi otomatik katılımcı yap
+        // Galeri fotoğraflarını tek tek kaydet (bulk insert büyük base64 verilerde başarısız olabiliyor)
+        if (galleryImages.length > 0) {
+          let savedCount = 0;
+          for (const img of galleryImages) {
+            try {
+              const result = await db.addGalleryPhoto(savedEvent.id, img);
+              if (result) savedCount++;
+            } catch (galleryErr) {
+              console.error('Galeri fotoğrafı kaydedilemedi:', galleryErr);
+            }
+          }
+          if (savedCount < galleryImages.length) {
+            console.warn(`Galeri: ${galleryImages.length} fotoğraftan ${savedCount} tanesi kaydedildi.`);
+          }
+        }
+
         await db.joinEvent(savedEvent.id);
         await loadEvents();
+        await checkVibeLimit(); // Limiti güncelle
         setShowCreateModal(false);
-        setNewEvent({ title: '', description: '', location: '', date: '', image: '', category: 'party' });
+        setNewEvent({ title: '', description: '', location: '', latitude: undefined, longitude: undefined, date: '', image: '', category: 'party' });
+        setGalleryImages([]);
       } else {
-        console.error('🔴 Event creation failed - no data returned');
         alert('Etkinlik oluşturulamadı. Lütfen tekrar deneyin.');
       }
     } catch (error) {
-      console.error('🔴 Event create error:', error);
       alert('Hata: ' + (error as Error).message);
     } finally {
       setIsCreating(false);
@@ -160,10 +301,32 @@ const Home: React.FC<HomeProps> = ({ user }) => {
       );
     })
     .sort((a, b) => {
-      if (sortOrder === 'popular') return b.participantCount - a.participantCount;
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+      // Güvenli tarih dönüştürme fonksiyonu
+      const getTime = (dateStr?: string) => {
+        if (!dateStr) return 0;
+        return new Date(dateStr).getTime();
+      };
+
+      if (sortOrder === 'popular') {
+        return (b.participantCount || 0) - (a.participantCount || 0);
+      }
+      if (sortOrder === 'vibe_score') {
+        return (b.ownerVibeScore || 0) - (a.ownerVibeScore || 0);
+      }
+      if (sortOrder === 'date_asc') {
+        // Bugünün tarihine en yakın etkinlikler önce (mutlak fark)
+        const now = Date.now();
+        const diffA = Math.abs(getTime(a.date) - now);
+        const diffB = Math.abs(getTime(b.date) - now);
+        return diffA - diffB;
+      }
+      if (sortOrder === 'date_desc') {
+        // En uzak tarih önce
+        return getTime(b.date) - getTime(a.date);
+      }
+
+      // Default: created_desc (YENİ)
+      return getTime(b.created_at) - getTime(a.created_at);
     });
 
   const getCategoryInfo = (catId: string) => {
@@ -172,127 +335,204 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+      <div className="min-h-screen flex items-center justify-center bg-bg-deep">
+        <div className="relative">
+          <div className="absolute inset-0 bg-indigo-500 blur-xl opacity-20 animate-pulse"></div>
+          <Loader2 className="w-10 h-10 animate-spin text-indigo-500 relative z-10" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8 pb-32 transition-colors duration-500">
-      {/* Ana İçerik */}
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-16">
-          <div className="space-y-2">
-            <h1 className="text-4xl md:text-5xl font-black font-outfit uppercase tracking-tighter italic">
-              VIBE <span className="text-rose-500">AKIŞI</span>
+    <div className="min-h-screen w-full relative bg-bg-deep overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-20%] left-[20%] w-[60%] h-[60%] rounded-full bg-indigo-900/20 blur-[120px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[10%] w-[50%] h-[50%] rounded-full bg-rose-900/10 blur-[100px] animate-pulse delay-1000"></div>
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+      </div>
+
+      <div className="w-full max-w-[1920px] mx-auto px-4 md:px-8 py-8 pb-32 relative z-10">
+
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8 mb-16">
+          <div className="relative">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+              <span className="text-[10px] font-black tracking-[0.3em] text-slate-400 uppercase">Topluluk Akışı</span>
+            </div>
+            <h1 className="text-5xl md:text-7xl font-black font-outfit text-text-main tracking-tighter leading-[0.9]">
+              VIBE <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-indigo-400">EVRENİ</span>
             </h1>
-            <p className="opacity-60 font-medium tracking-tight">Selam {user.firstName}! Topluluk bugün seninle.</p>
+            <p className="text-slate-500 font-bold mt-4 max-w-md">Hoş geldin, {user.firstName}. Bugün şehrin ritmini yakala ve sana iyi gelen insanlarla buluş.</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-            <div className="relative flex-grow md:flex-grow-0">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-40 text-rose-500" size={18} />
-              <input
-                type="text"
-                placeholder="Vibe ara..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full md:w-80 glass rounded-2xl pl-12 pr-6 py-3 text-sm outline-none font-medium transition-all focus:border-rose-500"
-              />
+          <div className="flex flex-col md:flex-row gap-4 w-full lg:w-auto">
+            <div className="relative group md:w-80">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-rose-500 to-indigo-500 rounded-2xl opacity-20 group-hover:opacity-50 blur transition duration-500"></div>
+              <div className="relative flex items-center bg-bg-surface rounded-xl border border-white/10 group-focus-within:border-indigo-500/50 transition-colors">
+                <Search className="ml-4 text-slate-500 group-focus-within:text-white transition-colors" size={20} />
+                <input
+                  type="text"
+                  placeholder="Etkinlik veya mekan ara..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-transparent border-none py-4 px-4 text-text-main placeholder:text-text-muted focus:outline-none text-sm font-bold font-outfit tracking-wide"
+                />
+              </div>
             </div>
             <button
-              onClick={() => setShowCreateModal(true)}
-              className="w-full md:w-auto px-6 py-3 bg-rose-500 text-white hover:bg-rose-600 rounded-2xl font-black flex items-center justify-center gap-2 transition-all shadow-xl shadow-rose-500/20 uppercase text-xs tracking-widest active:scale-95"
+              onClick={openCreateModal}
+              className={`px-6 py-4 rounded-xl font-black flex items-center justify-center gap-3 transition-all shadow-xl hover:scale-105 active:scale-95 uppercase text-xs tracking-widest whitespace-nowrap ${vibeLimit.canCreate
+                  ? 'bg-white text-slate-950 hover:bg-rose-50'
+                  : 'bg-slate-700 text-slate-400 cursor-not-allowed hover:scale-100'
+                }`}
             >
               <Plus size={18} strokeWidth={3} />
-              YENİ VIBE OLUŞTUR
+              <span>YENİ VIBE {vibeLimit.remaining < 3 && `(${vibeLimit.remaining}/3)`}</span>
             </button>
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 overflow-hidden">
-          <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide md:pb-0">
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+          <div className="flex gap-2 overflow-x-auto pb-4 md:pb-0 scrollbar-hide mask-linear-fade">
             {CATEGORIES.map((cat) => {
               const Icon = cat.icon;
+              const isActive = filter === cat.id;
               return (
                 <button
                   key={cat.id}
                   onClick={() => setFilter(cat.id)}
-                  className={`px-6 py-3 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all whitespace-nowrap border flex items-center gap-2 ${filter === cat.id
-                    ? 'bg-rose-500 text-white border-rose-500 shadow-xl shadow-rose-500/20 scale-105'
-                    : 'glass text-slate-500 hover:text-rose-500 border-indigo-500/20'
+                  className={`px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap border flex items-center gap-2 ${isActive
+                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/30 translate-y-[-2px]'
+                    : 'bg-white/5 border-white/5 text-text-muted hover:text-text-main hover:bg-white/10'
                     }`}
                 >
-                  <Icon size={14} />
+                  <Icon size={14} className={isActive ? 'animate-bounce-slight' : ''} />
                   {cat.label}
                 </button>
               );
             })}
           </div>
 
-          <div className="flex items-center gap-4 glass p-1.5 rounded-2xl shrink-0">
-            <span className="hidden md:block text-[10px] font-black opacity-40 uppercase tracking-[0.2em] ml-3">Sırala:</span>
-            <div className="flex gap-1">
-              {[
-                { id: 'newest', label: 'Yeni', icon: Calendar },
-                { id: 'oldest', label: 'Eski', icon: Calendar },
-                { id: 'popular', label: 'Popüler', icon: TrendingUp }
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => setSortOrder(opt.id as SortOption)}
-                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${sortOrder === opt.id
-                    ? 'bg-rose-500/10 text-rose-500 shadow-sm border border-rose-500/30'
-                    : 'text-slate-500 hover:text-rose-500'
-                    }`}
-                >
-                  <opt.icon size={12} />
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center gap-2 bg-bg-surface/50 p-1.5 rounded-xl border border-white/5 self-start md:self-auto flex-wrap">
+            {[
+              { id: 'created_desc', label: 'YENİ', icon: Sparkles },
+              { id: 'popular', label: 'POPÜLER', icon: TrendingUp },
+              { id: 'vibe_score', label: 'EN VİBELİ', icon: Zap },
+              { id: 'date_asc', label: 'TARİH', icon: Calendar },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setSortOrder(opt.id as SortOption)}
+                className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${sortOrder === opt.id
+                  ? opt.id === 'vibe_score'
+                    ? 'bg-gradient-to-r from-rose-500/20 to-indigo-500/20 text-rose-400 border border-rose-500/20'
+                    : 'bg-rose-500/20 text-rose-400 border border-rose-500/20'
+                  : 'text-text-muted hover:text-text-main'
+                  }`}
+              >
+                <opt.icon size={12} />
+                {opt.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+        {/* Masonry-style Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 md:gap-8">
           {filteredAndSortedEvents.length === 0 ? (
-            <div className="col-span-full py-32 text-center glass-card rounded-[3rem] border-dashed border-2">
-              <Sparkles className="mx-auto mb-6 text-rose-500 opacity-50" size={48} />
-              <h3 className="text-2xl font-black uppercase italic tracking-tighter">Henüz vibe bulunamadı</h3>
-              <p className="opacity-50 mt-2">İlk vibe'ı sen başlatmaya ne dersin?</p>
+            <div className="col-span-full py-32 flex flex-col items-center justify-center text-center relative overflow-hidden rounded-[3rem] bg-white/5 border border-white/5 border-dashed">
+              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 text-slate-600">
+                <Sparkles size={32} />
+              </div>
+              <h3 className="text-3xl font-black text-text-main font-outfit mb-3 uppercase tracking-tight">FREKANS YOK</h3>
+              <p className="text-slate-500 mb-8 max-w-sm font-medium">Bu kategoride henüz bir vibe yaratılmamış. İlk kıvılcımı sen çak.</p>
+              <button onClick={openCreateModal} className="text-rose-500 font-black uppercase text-xs tracking-widest hover:underline underline-offset-4">
+                + VIBE OLUŞTUR {vibeLimit.remaining < 3 && `(${vibeLimit.remaining}/3)`}
+              </button>
             </div>
           ) : (
             filteredAndSortedEvents.map((event, index) => {
               const catInfo = getCategoryInfo(event.category);
-              const isRose = index % 2 === 1;
+              const isEven = index % 2 === 0;
               return (
                 <Link
                   key={event.id}
                   to={`/events/${event.id}`}
-                  className={`group glass-card rounded-[2.5rem] overflow-hidden flex flex-col ${isRose ? 'rose-frame' : 'border-indigo-500/10'} hover:translate-y-[-8px]`}
+                  className="group relative flex flex-col bg-bg-surface border border-white/5 rounded-[2.5rem] overflow-hidden hover:border-indigo-500/30 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/10"
                 >
+                  {/* Image Container */}
                   <div className="h-64 relative overflow-hidden">
-                    <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60"></div>
-                    <div className="absolute top-6 left-6 px-4 py-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border border-white/20 flex items-center gap-2 shadow-xl">
-                      <catInfo.icon size={12} className={isRose ? 'text-rose-500' : 'text-indigo-600'} />
-                      <span className="text-slate-900 dark:text-white">{catInfo.label}</span>
+                    <div className="absolute inset-0 bg-indigo-900/20 mix-blend-overlay z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                    <img
+                      src={event.image}
+                      alt={event.title}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 group-hover:filter group-hover:contrast-125"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-bg-surface via-transparent to-transparent opacity-80"></div>
+
+                    <div className="absolute top-4 left-4 z-20">
+                      <div className="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 flex items-center gap-2">
+                        <catInfo.icon size={12} className="text-rose-500" />
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest">{catInfo.label}</span>
+                      </div>
                     </div>
+
+                    {/* Canlı katılımcı göstergesi */}
+                    {event.liveCount > 0 && (
+                      <div className="absolute top-4 right-4 z-20">
+                        <div className="px-3 py-1.5 bg-green-500/90 backdrop-blur-md rounded-lg border border-green-400/30 flex items-center gap-2 shadow-lg shadow-green-500/30">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                          </span>
+                          <span className="text-[10px] font-black text-white uppercase tracking-widest">
+                            {event.liveCount} CANLI
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="p-8 flex flex-col flex-grow">
-                    <h3 className="text-2xl font-black font-outfit leading-tight mb-4 group-hover:text-rose-500 transition-colors uppercase tracking-tight">
+
+                  {/* Content */}
+                  <div className="p-8 pt-2 flex flex-col flex-grow relative z-20">
+                    <h3 className="text-2xl font-black font-outfit text-text-main leading-tight mb-4 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-400 group-hover:to-rose-400 transition-all uppercase tracking-tight">
                       {event.title}
                     </h3>
-                    <p className="opacity-70 text-sm leading-relaxed mb-6 line-clamp-2 font-medium">{event.description}</p>
-                    <div className="mt-auto pt-6 border-t border-slate-500/10 flex flex-wrap gap-4 items-center justify-between">
-                      <div className="flex items-center gap-3 opacity-60">
-                        <MapPin size={14} className={isRose ? 'text-rose-500' : 'text-indigo-600'} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{event.location}</span>
-                      </div>
-                      <div className="flex items-center gap-3 opacity-60">
+
+                    <div className="flex items-center gap-4 mb-6 opacity-60">
+                      <div className="flex items-center gap-2 text-slate-300">
                         <Calendar size={14} className="text-rose-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{event.date}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">{new Date(event.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
+                      </div>
+                      <div className="w-1 h-1 rounded-full bg-slate-600"></div>
+                      <div className="flex items-center gap-2 text-slate-300">
+                        <MapPin size={14} className="text-indigo-500" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider line-clamp-1">{event.location}</span>
+                      </div>
+                    </div>
+
+                    <p className="text-slate-500 text-sm font-medium line-clamp-2 leading-relaxed mb-6">
+                      {event.description}
+                    </p>
+
+                    <div className="mt-auto pt-6 border-t border-white/5 flex items-center justify-between">
+                      <div className="flex -space-x-3">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="w-8 h-8 rounded-full border-2 border-bg-surface bg-slate-800 bg-cover relative z-10" style={{ backgroundImage: `url(https://api.dicebear.com/7.x/avataaars/svg?seed=${event.id + i})` }}></div>
+                        ))}
+                        {event.participantCount > 0 && (
+                          <div className="w-8 h-8 rounded-full border-2 border-bg-surface bg-slate-800 flex items-center justify-center text-[9px] font-bold text-white relative z-20">
+                            +{event.participantCount}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
+                        <ArrowRight size={18} className="-rotate-45 group-hover:rotate-0 transition-transform duration-300" />
                       </div>
                     </div>
                   </div>
@@ -301,90 +541,250 @@ const Home: React.FC<HomeProps> = ({ user }) => {
             })
           )}
         </div>
-      </div>
 
-      {showCreateModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-xl" onClick={() => setShowCreateModal(false)}></div>
-          <div className="relative w-full max-w-2xl glass-card rounded-[3rem] p-8 md:p-12 border-2 border-indigo-500/20 shadow-2xl overflow-y-auto scrollbar-hide max-h-[90vh]">
-            <div className="flex justify-between items-start mb-10">
-              <h2 className="text-3xl md:text-4xl font-black font-outfit tracking-tighter uppercase italic">
-                YENİ BİR <span className="text-rose-500">VIBE</span> BAŞLAT
-              </h2>
-              <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-slate-500/10 rounded-full opacity-50 transition-colors">
-                <X size={24} />
-              </button>
-            </div>
-            <form onSubmit={handleCreateEvent} className="space-y-8">
-              {/* Resim Seçme Alanı */}
-              <div className="space-y-4">
-                <label className="text-[10px] font-black opacity-40 uppercase tracking-widest ml-1">Kapak Fotoğrafı</label>
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="relative h-48 md:h-64 rounded-[2.5rem] border-2 border-dashed border-indigo-500/20 hover:border-rose-500/50 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center group"
+        {/* Limit Warning Modal */}
+        {showLimitModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-deep/90 backdrop-blur-xl animate-in fade-in duration-300">
+            <div
+              className="relative w-full max-w-md bg-bg-surface rounded-[3rem] p-8 md:p-12 border border-rose-500/20 shadow-2xl text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Glows */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/20 blur-[80px] pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-500/10 blur-[80px] pointer-events-none"></div>
+
+              <div className="relative z-10">
+                <button
+                  onClick={() => setShowLimitModal(false)}
+                  className="absolute top-0 right-0 w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white transition-all"
                 >
-                  {newEvent.image ? (
-                    <>
-                      <img src={newEvent.image} className="w-full h-full object-cover" alt="Preview" />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Camera className="text-white" size={32} />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center gap-3 opacity-40 group-hover:opacity-100 transition-opacity">
-                      <ImageIcon size={48} className="text-rose-500" />
-                      <span className="font-black text-[10px] uppercase tracking-widest">RESİM SEÇ VEYA SÜRÜKLE</span>
-                    </div>
-                  )}
-                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-                </div>
-              </div>
+                  <X size={20} />
+                </button>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black opacity-40 uppercase tracking-widest ml-1">Vibe Adı *</label>
-                  <input type="text" required value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })} className="w-full glass rounded-[1.5rem] px-6 py-4 text-sm font-bold focus:border-rose-500 outline-none" placeholder="Örn: Gece Koşusu" />
+                {/* Warning Icon */}
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-rose-500/20 to-orange-500/20 flex items-center justify-center">
+                  <Zap size={40} className="text-rose-500" />
                 </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black opacity-40 uppercase tracking-widest ml-1">Kategori *</label>
-                  <select value={newEvent.category} onChange={e => setNewEvent({ ...newEvent, category: e.target.value as any })} className="w-full glass rounded-[1.5rem] px-6 py-4 text-sm font-bold appearance-none cursor-pointer focus:border-rose-500 outline-none">
-                    <option value="party">⚡ Enerji</option>
-                    <option value="coffee">☕ Huzur</option>
-                    <option value="social">🤝 Sosyal</option>
-                    <option value="study">🧠 Odak</option>
-                    <option value="sport">🏆 Hareket</option>
-                    <option value="game">🎮 Oyun</option>
-                  </select>
+
+                <h2 className="text-2xl md:text-3xl font-black font-outfit tracking-tighter uppercase text-text-main mb-4">
+                  Günlük Limit Doldu!
+                </h2>
+
+                <p className="text-slate-400 mb-8 font-medium">
+                  Bugün için <span className="text-rose-400 font-bold">3 vibe</span> oluşturma hakkınızı kullandınız.
+                  Yarın gece yarısında yeni vibe'lar oluşturabilirsiniz.
+                </p>
+
+                {/* Countdown Timer */}
+                <div className="mb-8">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-4">
+                    Yeni vibe oluşturmanıza kalan süre
+                  </p>
+                  <div className="flex justify-center gap-4">
+                    <div className="bg-white/5 rounded-2xl p-4 min-w-[80px] border border-white/10">
+                      <span className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-orange-400">
+                        {String(countdown.hours).padStart(2, '0')}
+                      </span>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">Saat</p>
+                    </div>
+                    <div className="bg-white/5 rounded-2xl p-4 min-w-[80px] border border-white/10">
+                      <span className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-400">
+                        {String(countdown.minutes).padStart(2, '0')}
+                      </span>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">Dakika</p>
+                    </div>
+                    <div className="bg-white/5 rounded-2xl p-4 min-w-[80px] border border-white/10">
+                      <span className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-400">
+                        {String(countdown.seconds).padStart(2, '0')}
+                      </span>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">Saniye</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black opacity-40 uppercase tracking-widest ml-1">Konum *</label>
-                  <input type="text" required value={newEvent.location} onChange={e => setNewEvent({ ...newEvent, location: e.target.value })} className="w-full glass rounded-[1.5rem] px-6 py-4 text-sm font-bold focus:border-rose-500 outline-none" placeholder="Nerede buluşuyoruz?" />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black opacity-40 uppercase tracking-widest ml-1">Tarih *</label>
-                  <input
-                    type="date"
-                    required
-                    value={newEvent.date}
-                    onChange={e => setNewEvent({ ...newEvent, date: e.target.value })}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full glass rounded-[1.5rem] px-6 py-4 text-sm font-bold focus:border-rose-500 outline-none"
-                  />
-                </div>
-              </div>
-              <textarea required rows={4} value={newEvent.description} onChange={e => setNewEvent({ ...newEvent, description: e.target.value })} className="w-full glass rounded-[2rem] px-6 py-4 text-sm font-bold resize-none focus:border-rose-500 outline-none" placeholder="Bu vibe'ın ruhu nedir?" />
-              <div className="pt-6 flex flex-col sm:flex-row gap-4">
-                <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 px-8 py-5 glass rounded-[1.5rem] font-black opacity-40 uppercase text-xs tracking-widest hover:opacity-100 transition-all">VAZGEÇ</button>
-                <button type="submit" disabled={isCreating} className="flex-[2] px-8 py-5 bg-rose-500 text-white hover:bg-rose-600 rounded-[1.5rem] font-black shadow-xl shadow-rose-500/20 uppercase text-xs tracking-widest active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                  {isCreating ? <Loader2 className="w-5 h-5 animate-spin" /> : 'VIBE\'I YAYINLA'}
+
+                <button
+                  onClick={() => setShowLimitModal(false)}
+                  className="w-full py-4 bg-gradient-to-r from-rose-500 to-orange-500 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:opacity-90 transition-opacity"
+                >
+                  Anladım
                 </button>
               </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Create Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300">
+            <div
+              className="relative w-full max-w-2xl bg-slate-900 rounded-[3rem] p-8 md:p-12 border border-white/10 shadow-2xl overflow-y-auto scrollbar-hide max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Glows */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[80px] pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-rose-500/10 blur-[80px] pointer-events-none"></div>
+
+              <div className="relative z-10">
+                <div className="flex justify-between items-start mb-10">
+                  <h2 className="text-3xl md:text-4xl font-black font-outfit tracking-tighter uppercase italic text-text-main">
+                    YENİ <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-indigo-400">VIBE</span> YARAT
+                  </h2>
+                  <button onClick={() => setShowCreateModal(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white transition-all">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateEvent} className="space-y-8">
+                    <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Kapak Görseli</label>
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="relative h-48 md:h-64 rounded-[2rem] border-2 border-dashed border-white/10 hover:border-rose-500/50 hover:bg-white/5 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center group"
+                    >
+                      {newEvent.image ? (
+                        <>
+                          <img src={newEvent.image} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" alt="Preview" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Camera className="text-white" size={20} />
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center gap-3 opacity-40 group-hover:opacity-100 transition-opacity">
+                          <ImageIcon size={32} className="text-rose-500" />
+                          <span className="font-black text-[10px] text-white uppercase tracking-widest">Görsel Yükle</span>
+                        </div>
+                      )}
+                      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                    </div>
+                  </div>
+
+                  {/* Galeri Fotoğrafları */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Galeri Fotoğrafları</label>
+                      <span className="text-[10px] font-bold text-slate-600">{galleryImages.length} fotoğraf eklendi</span>
+                    </div>
+                    
+                    {/* Eklenen galeri fotoğrafları önizleme */}
+                    {galleryImages.length > 0 && (
+                      <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                        {galleryImages.map((img, index) => (
+                          <div key={index} className="relative group/gallery aspect-square rounded-2xl overflow-hidden border border-white/10">
+                            <img src={img} className="w-full h-full object-cover" alt={`Galeri ${index + 1}`} />
+                            <button
+                              type="button"
+                              onClick={() => removeGalleryImage(index)}
+                              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover/gallery:opacity-100 transition-opacity hover:bg-red-600"
+                            >
+                              <X size={14} className="text-white" />
+                            </button>
+                            <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 rounded-lg text-[9px] font-bold text-white">
+                              {index + 1}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Galeri fotoğraf ekleme butonu */}
+                    <div
+                      onClick={() => galleryInputRef.current?.click()}
+                      className="relative h-24 rounded-2xl border-2 border-dashed border-white/10 hover:border-indigo-500/50 hover:bg-white/5 transition-all cursor-pointer overflow-hidden flex items-center justify-center gap-3 group"
+                    >
+                      <div className="flex items-center gap-3 opacity-40 group-hover:opacity-100 transition-opacity">
+                        <Camera size={20} className="text-indigo-500" />
+                        <span className="font-black text-[10px] text-white uppercase tracking-widest">Galeriye Fotoğraf Ekle</span>
+                      </div>
+                      <input 
+                        type="file" 
+                        ref={galleryInputRef} 
+                        className="hidden" 
+                        accept="image/*" 
+                        multiple 
+                        onChange={handleGalleryFilesChange} 
+                      />
+                    </div>
+                    <p className="text-[9px] text-slate-600 ml-1">istediğin kadar fotoğraf ekleyebilirsin - vibe detaylarında galeri olarak gözükecek</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Başlık</label>
+                      <input type="text" required value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
+                        className="w-full bg-bg-deep/50 border border-white/10 rounded-2xl px-6 py-4 text-text-main placeholder:text-text-muted focus:outline-none focus:border-rose-500/50 transition-all text-sm font-bold"
+                        placeholder="Etkinlik Adı"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Kategori</label>
+                      <div className="relative">
+                        <select value={newEvent.category} onChange={e => setNewEvent({ ...newEvent, category: e.target.value as any })}
+                          className="w-full bg-bg-deep/50 border border-white/10 rounded-2xl px-6 py-4 text-text-main appearance-none cursor-pointer focus:outline-none focus:border-rose-500/50 transition-all text-sm font-bold"
+                        >
+                          <option value="party" className="bg-slate-900">⚡ Enerji</option>
+                          <option value="coffee" className="bg-slate-900">☕ Huzur</option>
+                          <option value="social" className="bg-slate-900">🤝 Sosyal</option>
+                          <option value="study" className="bg-slate-900">🧠 Odak</option>
+                          <option value="sport" className="bg-slate-900">🏆 Hareket</option>
+                          <option value="game" className="bg-slate-900">🎮 Oyun</option>
+                        </select>
+                        <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
+                          <ArrowRight size={14} className="text-slate-500 rotate-90" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tarih */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tarih</label>
+                    <div className="relative">
+                      <Calendar className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                      <input
+                        type="date"
+                        required
+                        value={newEvent.date}
+                        onChange={e => setNewEvent({ ...newEvent, date: e.target.value })}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full bg-bg-deep/50 border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-text-main placeholder:text-text-muted focus:outline-none focus:border-rose-500/50 transition-all text-sm font-bold [color-scheme:dark]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Konum Seçici - İlçe + Mekan Seçimi */}
+                  <LocationPicker
+                    address={newEvent.location}
+                    onAddressChange={(addr) => setNewEvent(prev => ({ ...prev, location: addr }))}
+                    latitude={newEvent.latitude}
+                    longitude={newEvent.longitude}
+                    onCoordinatesChange={(lat, lng, mapAddress) => setNewEvent(prev => ({ ...prev, latitude: lat, longitude: lng, location: mapAddress || prev.location }))}
+                    addressRequired={true}
+                  />
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Açıklama</label>
+                    <textarea required rows={4} value={newEvent.description} onChange={e => setNewEvent({ ...newEvent, description: e.target.value })}
+                      className="w-full bg-bg-deep/50 border border-white/10 rounded-[2rem] px-6 py-4 text-text-main placeholder:text-text-muted focus:outline-none focus:border-rose-500/50 transition-all text-sm font-bold resize-none"
+                      placeholder="Detaylardan bahset..."
+                    />
+                  </div>
+
+                  <div className="pt-4 flex gap-4">
+                    <button type="button" onClick={() => setShowCreateModal(false)} className="px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest text-slate-500 hover:text-white hover:bg-white/5 transition-all">
+                      İPTAL
+                    </button>
+                    <button type="submit" disabled={isCreating} className="flex-1 bg-gradient-to-r from-rose-600 to-rose-500 hover:to-rose-400 text-white rounded-2xl py-4 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-rose-500/20 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                      {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'YAYINLA'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -1,9 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { db } from '../db';
-import { Event, Comment, User } from '../types';
-import { Calendar, MapPin, Send, ArrowLeft, Heart, MessageSquare, Check, Users as UsersIcon, Share2, Zap, Loader2, Edit3, X, Save, Reply, Pin, Trash2 } from 'lucide-react';
+import { db } from '../database';
+import { supabase } from '../lib/supabase'; // Import Supabase
+import { Event, Comment, User, EventGalleryPhoto } from '../types';
+import { Calendar, MapPin, Send, ArrowLeft, Heart, MessageSquare, Check, Users as UsersIcon, Share2, Zap, Loader2, Edit3, X, Save, Reply, Pin, Trash2, Sparkles, QrCode, Image as ImageIcon, ChevronLeft, ChevronRight, Camera } from 'lucide-react'; // Add QrCode import
+import MapDisplay from '../components/MapDisplay';
 
 interface EventDetailProps {
   user: User;
@@ -18,15 +20,27 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAttending, setIsAttending] = useState(false);
   const [participantCount, setParticipantCount] = useState(0);
+  const [checkedInCount, setCheckedInCount] = useState(0); // Canlı check-in sayısı
   const [isSendingComment, setIsSendingComment] = useState(false);
   const [isTogglingJoin, setIsTogglingJoin] = useState(false);
   const [participants, setParticipants] = useState<User[]>([]);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [creator, setCreator] = useState<User | null>(null);
+  const [creatorVibeScore, setCreatorVibeScore] = useState(0);
 
   // Vibe düzenleme
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', description: '', location: '', date: '' });
   const [isSaving, setIsSaving] = useState(false);
+
+  // Galeri state
+  const [gallery, setGallery] = useState<EventGalleryPhoto[]>([]);
+  const [showLightbox, setShowLightbox] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingGallery, setIsUploadingGallery] = useState(false);
+  // Realtime kanal referansı - cleanup için
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Yorum yanıtları
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -42,15 +56,56 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
         setEvent(eventData);
 
         // Yorumları nested olarak yükle (vibe sahibi yorumları üstte)
-        const [commentsData, attending, count] = await Promise.all([
+        const [commentsData, attending, count, creatorData] = await Promise.all([
           db.getCommentsWithReplies(id, eventData.user_id),
           db.isUserParticipant(id, user.id),
-          db.getParticipantCount(id)
+          db.getParticipantCount(id),
+          db.getUserById(eventData.user_id)
         ]);
+
+        // Canlı check-in sayısını al
+        const { count: checkInCount } = await supabase
+          .from('event_participants')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', id)
+          .eq('checked_in', true);
+
+        // Galeri fotoğraflarını yükle
+        const galleryData = await db.getEventGallery(id);
+        setGallery(galleryData);
 
         setComments(commentsData);
         setIsAttending(attending);
         setParticipantCount(count);
+        setCheckedInCount(checkInCount || 0);
+        
+        if (creatorData) {
+          setCreator(creatorData);
+          const score = await db.calculateVibeScore(creatorData.id);
+          setCreatorVibeScore(score);
+        }
+
+        // Realtime check-in güncellemelerini dinle.
+        // Önce varsa önceki kanaldan ??ikil, sonra yenisine abone ol.
+        if (channelRef.current) {
+          await channelRef.current.unsubscribe();
+          channelRef.current = null;
+        }
+
+        channelRef.current = supabase
+          .channel(`checkins_${id}`)
+          .on(
+              'postgres_changes',
+              { event: 'UPDATE', schema: 'public', table: 'event_participants', filter: `event_id=eq.${id}` },
+              (payload: any) => {
+                // Sadece checked_in false → true geçişi say
+                if (payload.new.checked_in && !payload.old?.checked_in) {
+                  setCheckedInCount(prev => prev + 1);
+                }
+              }
+          )
+          .subscribe();
+
       }
     } catch (error) {
       console.error('Event load error:', error);
@@ -70,6 +125,10 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
 
   useEffect(() => {
     loadEventData();
+    return () => {
+      // Bileşen kaldırıldığında realtime aboneliğini iptal et
+      channelRef.current?.unsubscribe();
+    };
   }, [id, user.id]);
 
   useEffect(() => {
@@ -191,6 +250,55 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
     }
   };
 
+  // Galeri fotoğrafı ekleme (detay sayfasından)
+  const handleAddGalleryPhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !event) return;
+
+    setIsUploadingGallery(true);
+    try {
+      const readFileAsDataURL = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      };
+
+      const images: { imageUrl: string }[] = [];
+      for (const file of Array.from(files)) {
+        const dataUrl = await readFileAsDataURL(file);
+        images.push({ imageUrl: dataUrl });
+      }
+
+      const saved = await db.addMultipleGalleryPhotos(event.id, images);
+      if (saved.length > 0) {
+        // Galeriyi yenile
+        const updated = await db.getEventGallery(event.id);
+        setGallery(updated);
+      }
+    } catch (error) {
+      console.error('Gallery upload error:', error);
+    } finally {
+      setIsUploadingGallery(false);
+      e.target.value = '';
+    }
+  };
+
+  // Galeri fotoğrafı silme
+  const handleDeleteGalleryPhoto = async (photoId: string) => {
+    if (!confirm('Bu fotoğrafı galeriden silmek istiyor musun?')) return;
+    try {
+      const success = await db.deleteGalleryPhoto(photoId);
+      if (success) {
+        setGallery(prev => prev.filter(p => p.id !== photoId));
+      }
+    } catch (error) {
+      console.error('Gallery delete error:', error);
+    }
+  };
+
   // Yorum bileşeni (nested yorumlar için recursive)
   const CommentItem: React.FC<{ comment: Comment; depth?: number }> = ({ comment, depth = 0 }) => {
     const isCommentOwner = comment.user_id === event.user_id;
@@ -304,17 +412,195 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
             <h1 className="text-4xl md:text-8xl font-black font-outfit tracking-tighter mb-4 uppercase leading-none text-white text-glow">
               {event.title}
             </h1>
+            
+            {checkedInCount > 0 && (
+              <div className="flex items-center gap-2 px-6 py-2 bg-green-500/20 backdrop-blur-md rounded-full border border-green-500/30 animate-pulse">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
+                <span className="text-green-400 font-bold tracking-widest text-sm uppercase">
+                  Canlı: {checkedInCount} Kişi Mekanda
+                </span>
+              </div>
+            )}
+            
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 mt-12 md:mt-16 grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-16">
         <div className="lg:col-span-8 space-y-12">
-          <section>
+          <section className="mb-12">
             <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-6 ml-1">HİKAYE</h2>
             <p className="text-xl md:text-3xl opacity-80 font-medium leading-[1.4] tracking-tight">
               {event.description}
             </p>
+          </section>
+
+          {/* Fotoğraf Galerisi */}
+          {gallery.length > 0 && (
+            <section className="mb-12">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-rose-500/10 rounded-2xl flex items-center justify-center text-rose-500">
+                    <ImageIcon size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">FOTOĞRAF GALERİSİ</h2>
+                    <p className="text-sm font-bold text-white mt-1">{gallery.length} fotoğraf</p>
+                  </div>
+                </div>
+                {isOwner && (
+                  <button
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 glass rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-500/10 text-rose-500 transition-all"
+                  >
+                    <Camera size={14} /> Ekle
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {gallery.map((photo, index) => (
+                  <div
+                    key={photo.id}
+                    onClick={() => { setLightboxIndex(index); setShowLightbox(true); }}
+                    className="relative aspect-square rounded-[1.5rem] overflow-hidden border border-white/5 cursor-pointer group/photo hover:border-rose-500/30 transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-rose-500/10"
+                  >
+                    <img
+                      src={photo.image_url}
+                      alt={photo.caption || `Fotoğraf ${index + 1}`}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover/photo:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/photo:opacity-100 transition-opacity" />
+                    {photo.caption && (
+                      <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover/photo:opacity-100 transition-opacity">
+                        <p className="text-white text-xs font-bold truncate">{photo.caption}</p>
+                      </div>
+                    )}
+                    {isOwner && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteGalleryPhoto(photo.id);
+                        }}
+                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover/photo:opacity-100 transition-opacity hover:bg-red-600"
+                      >
+                        <Trash2 size={14} className="text-white" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Galeri fotoğraf ekleme input (hidden) */}
+              <input
+                type="file"
+                ref={galleryInputRef}
+                className="hidden"
+                accept="image/*"
+                multiple
+                onChange={handleAddGalleryPhotos}
+              />
+            </section>
+          )}
+
+          {/* Etkinlik sahibi için galeri boşsa ekleme butonu */}
+          {gallery.length === 0 && isOwner && (
+            <section className="mb-12">
+              <div
+                onClick={() => galleryInputRef.current?.click()}
+                className="relative h-32 rounded-[2rem] border-2 border-dashed border-white/10 hover:border-rose-500/30 hover:bg-white/5 transition-all cursor-pointer overflow-hidden flex items-center justify-center gap-4 group"
+              >
+                <div className="flex items-center gap-4 opacity-40 group-hover:opacity-100 transition-opacity">
+                  <Camera size={24} className="text-rose-500" />
+                  <div>
+                    <p className="font-black text-sm text-white uppercase tracking-widest">Fotoğraf Galerisi Oluştur</p>
+                    <p className="text-[10px] text-slate-500 mt-1">Vibe'a birden fazla fotoğraf ekle</p>
+                  </div>
+                </div>
+              </div>
+              <input
+                type="file"
+                ref={galleryInputRef}
+                className="hidden"
+                accept="image/*"
+                multiple
+                onChange={handleAddGalleryPhotos}
+              />
+            </section>
+          )}
+
+          {/* Lightbox - Tam ekran fotoğraf görüntüleme */}
+          {showLightbox && gallery.length > 0 && (
+            <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center" onClick={() => setShowLightbox(false)}>
+              <button
+                onClick={() => setShowLightbox(false)}
+                className="absolute top-6 right-6 z-50 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all"
+              >
+                <X size={24} />
+              </button>
+
+              {/* Prev */}
+              {gallery.length > 1 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setLightboxIndex(prev => prev <= 0 ? gallery.length - 1 : prev - 1); }}
+                  className="absolute left-4 md:left-8 z-50 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+              )}
+
+              {/* Image */}
+              <div className="max-w-[90vw] max-h-[85vh] relative" onClick={(e) => e.stopPropagation()}>
+                <img
+                  src={gallery[lightboxIndex]?.image_url}
+                  alt={gallery[lightboxIndex]?.caption || ''}
+                  className="max-w-full max-h-[85vh] object-contain rounded-2xl"
+                />
+                {gallery[lightboxIndex]?.caption && (
+                  <div className="absolute bottom-4 left-4 right-4 text-center">
+                    <p className="text-white font-bold bg-black/50 backdrop-blur-md inline-block px-6 py-2 rounded-xl">{gallery[lightboxIndex].caption}</p>
+                  </div>
+                )}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2">
+                  <span className="text-white/60 text-xs font-bold bg-black/40 px-4 py-1 rounded-full">{lightboxIndex + 1} / {gallery.length}</span>
+                </div>
+              </div>
+
+              {/* Next */}
+              {gallery.length > 1 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setLightboxIndex(prev => prev >= gallery.length - 1 ? 0 : prev + 1); }}
+                  className="absolute right-4 md:right-8 z-50 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all"
+                >
+                  <ChevronRight size={24} />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Location & Map Section - Moved here as requested */}
+          <section className="mb-12">
+             <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500">
+                   <MapPin size={24} />
+                </div>
+                <div>
+                   <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">KONUM</h2>
+                   <p className="text-xl font-bold text-white mt-1">{event.location}</p>
+                </div>
+             </div>
+
+             {event.latitude && event.longitude && (
+                <div className="rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl relative group">
+                   <div className="absolute inset-0 border-4 border-white/5 z-20 pointer-events-none rounded-[2.5rem]"></div>
+                   <MapDisplay
+                      latitude={event.latitude}
+                      longitude={event.longitude}
+                      locationName={event.location}
+                      height="350px"
+                   />
+                </div>
+             )}
           </section>
 
           <section className="pt-12 border-t border-indigo-500/10">
@@ -348,6 +634,28 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
         </div>
 
         <div className="lg:col-span-4 space-y-8">
+          {/* Creator Profile Card */}
+          {creator && (
+            <div className="glass-card p-8 rounded-[3rem] border-indigo-500/20 shadow-2xl">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-6 text-center">VİBE SAHİBİ</h3>
+              <div className="flex flex-col items-center text-center">
+                <img
+                  src={creator.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${creator.id}`}
+                  alt={creator.username}
+                  className="w-20 h-20 rounded-3xl object-cover border-2 border-indigo-500/20 shadow-lg mb-4"
+                />
+                <p className="font-black text-lg">{creator.firstName} {creator.lastName}</p>
+                <p className="text-rose-500 text-xs font-bold mb-4">@{creator.username}</p>
+                <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-rose-500/20 to-indigo-500/20 rounded-2xl">
+                  <Sparkles size={16} className="text-amber-400" />
+                  <span className="font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-indigo-500">
+                    {creatorVibeScore.toFixed(2)} VIBE
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="glass-card p-10 rounded-[3rem] sticky top-8 border-rose-500/20 shadow-2xl">
             <div className="mb-10 text-center">
               <div className="w-16 h-16 bg-rose-500/10 rounded-3xl flex items-center justify-center mx-auto mb-6 text-rose-500 floating">
@@ -368,10 +676,15 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
               >
                 {isTogglingJoin ? <Loader2 className="w-6 h-6 animate-spin" /> : (isAttending ? 'ERİŞİM ONAYLANDI' : 'YERİNİ AYIRT')}
               </button>
-              <div className="grid grid-cols-1 gap-3 pt-4 opacity-60">
-                <div className="flex items-center gap-3 text-xs font-bold"><Calendar size={14} className="text-rose-500" /> {event.date}</div>
-                <div className="flex items-center gap-3 text-xs font-bold"><MapPin size={14} className="text-indigo-600" /> {event.location}</div>
-                <div className="flex items-center gap-3 text-xs font-bold"><UsersIcon size={14} className="text-rose-500" /> {participantCount} Katılımcı</div>
+              
+              {/* Etkinlik Bilgileri */}
+              <div className="grid grid-cols-1 gap-3 pt-4">
+                <div className="flex items-center gap-3 text-xs font-bold opacity-60">
+                  <Calendar size={14} className="text-rose-500" /> {event.date}
+                </div>
+                <div className="flex items-center gap-3 text-xs font-bold opacity-60">
+                  <UsersIcon size={14} className="text-rose-500" /> {participantCount} Katılımcı
+                </div>
               </div>
             </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../db';
+import { db } from '../database';
 import { Shield, Github, Heart, Globe, Code, Sun, Moon, Home } from 'lucide-react';
 import { Link } from 'react-router-dom';
 

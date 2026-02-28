@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../db';
+import { db } from '../database';
 import { supabase } from '../lib/supabase';
 import { Users, Activity, Zap, TrendingUp, RefreshCw, Sun, Moon, Home } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -15,19 +15,22 @@ const Vibeler: React.FC = () => {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const users = await db.getUsers();
-        const events = await db.getEvents();
+        const threshold = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         
-        // Simulating daily active since we might not have 'last_sign_in' visible w/o admin
-        const dailyActiveCalc = Math.floor(users.length * 0.7) + 5; 
-
+        const [usersRes, eventsRes, activeRes] = await Promise.all([
+          supabase.from('users').select('*', { count: 'exact', head: true }),
+          supabase.from('events').select('*', { count: 'exact', head: true }),
+          supabase.from('users').select('*', { count: 'exact', head: true }).gt('lastActiveAt', threshold)
+        ]);
+        
         setStats({
-          userCount: users.length,
-          activeVibes: events.length,
-          dailyActive: dailyActiveCalc
+          userCount: usersRes.count || 0,
+          activeVibes: eventsRes.count || 0,
+          dailyActive: activeRes.count || 0
         });
       } catch (error) {
         // Fallback layout data
+        console.error('Stats load failed', error);
         setStats({ userCount: 146, activeVibes: 87, dailyActive: 50 });
       }
     };

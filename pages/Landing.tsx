@@ -1,435 +1,611 @@
 import React, { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, Star, Zap, Shield, Heart, Users, Mail, Sun, Moon, X, Lock, Loader2 } from 'lucide-react';
+import {
+  Sparkles, ArrowRight, Star, Zap, Shield, Heart, Users,
+  MapPin, Globe, Moon, Sun, X, Calendar, Music, Coffee, ChevronRight, BookOpen, Compass, Smile
+} from 'lucide-react';
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [scrollY, setScrollY] = useState(0);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState('connect');
 
-  // Admin giriş modal
+  // Admin logic
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
-  const [adminError, setAdminError] = useState('');
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [authError, setAuthError] = useState('');
   const [clickCount, setClickCount] = useState(0);
+  const [loadingAdmin, setLoadingAdmin] = useState(false);
 
-  // Admin şifresi
-  const ADMIN_PASSWORD = 'Allah4848';
+  // Stats State
+  const [stats, setStats] = useState({
+    users: '...',
+    events: '...',
+    vibeScore: '...'
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [usersRes, eventsRes, participantsRes] = await Promise.allSettled([
+          supabase.from('users').select('*', { count: 'exact', head: true }),
+          supabase.from('events').select('*', { count: 'exact', head: true }),
+          supabase.from('event_participants').select('*', { count: 'exact', head: true })
+        ]);
+
+        let userCount = 0;
+        let eventCount = 0;
+        let participantCount = 0;
+
+        if (usersRes.status === 'fulfilled' && usersRes.value.count !== null) {
+          userCount = usersRes.value.count;
+        }
+        if (eventsRes.status === 'fulfilled' && eventsRes.value.count !== null) {
+          eventCount = eventsRes.value.count;
+        }
+        if (participantsRes.status === 'fulfilled' && participantsRes.value.count !== null) {
+          participantCount = participantsRes.value.count;
+        }
+
+        // Toplam vibe puanı = etkinlik sayısı * 10 + katılım sayısı * 5
+        const totalVibeScore = (eventCount * 10) + (participantCount * 5);
+
+        const formatNumber = (num: number) => {
+          if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+          if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
+          return `${num}`;
+        };
+
+        setStats({
+          users: formatNumber(userCount),
+          events: formatNumber(eventCount),
+          vibeScore: formatNumber(totalVibeScore)
+        });
+      } catch (err) {
+        console.warn('Stats yüklenemedi:', err);
+        setStats({ users: '0', events: '0', vibeScore: '0' });
+      }
+    };
+    fetchStats();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll);
+
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => {
-    // Tarayıcıdan tema tercihini al
-    const savedTheme = localStorage.getItem('silius_theme');
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark');
-    }
-  }, []);
 
-  const toggleTheme = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    localStorage.setItem('silius_theme', newMode ? 'dark' : 'light');
-  };
 
-  // Silius logosuna tıklandığında
   const handleLogoClick = () => {
     const newCount = clickCount + 1;
     setClickCount(newCount);
-
-    // 3 kez tıklandığında admin modal'ı aç
     if (newCount >= 3) {
       setShowAdminModal(true);
       setClickCount(0);
     }
-
-    // 2 saniye sonra sayacı sıfırla
     setTimeout(() => setClickCount(0), 2000);
   };
 
   const handleAdminLogin = () => {
-    setIsLoggingIn(true);
-    setAdminError('');
-
+    setLoadingAdmin(true);
     setTimeout(() => {
-      if (adminPassword === ADMIN_PASSWORD) {
-        // Admin olarak işaretle (localStorage'a kaydet)
+      if (adminPassword === 'Allah4848') {
         localStorage.setItem('silius_admin_auth', 'true');
         setShowAdminModal(false);
         navigate('/admin');
       } else {
-        setAdminError('Şifre yanlış!');
+        setAuthError('Hatalı şifre');
       }
-      setIsLoggingIn(false);
-    }, 500);
+      setLoadingAdmin(false);
+    }, 800);
+  };
+
+  const features = {
+    connect: {
+      title: "Gerçek Bağlar Kur",
+      desc: "Algoritmalar değil, ortak ilgi alanları sizi bir araya getirir.",
+      icon: Users,
+      color: "from-indigo-500 to-blue-500",
+      stats: "15k+ Kullanıcı"
+    },
+    discover: {
+      title: "Şehri Keşfet",
+      desc: "Gizli mekanlar, pop-up etkinlikler ve yerel topluluklar.",
+      icon: MapPin,
+      color: "from-rose-500 to-orange-500",
+      stats: "120+ Mekan"
+    },
+    vibe: {
+      title: "Vibele",
+      desc: "Ruh haline uygun müzik, ortam ve insanları bul.",
+      icon: Zap,
+      color: "from-purple-500 to-pink-500",
+      stats: "Sınırsız Vibe"
+    }
   };
 
   return (
-    <div className={`relative min-h-screen overflow-x-hidden selection:bg-indigo-500/30 font-sans transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
+    <div className="relative min-h-screen font-sans overflow-x-hidden transition-colors duration-500 bg-bg-deep text-text-main">
 
-      {/* Admin Giriş Modal */}
+      {/* Dynamic Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className={`absolute -top-32 -left-32 w-96 h-96 rounded-full blur-[120px] mix-blend-screen opacity-40 animate-pulse ${isDarkMode ? 'bg-indigo-600' : 'bg-indigo-400'}`} />
+        <div className={`absolute top-1/2 -right-32 w-[500px] h-[500px] rounded-full blur-[140px] mix-blend-screen opacity-30 animate-blob ${isDarkMode ? 'bg-rose-600' : 'bg-rose-400'}`} />
+        <div className={`absolute -bottom-32 left-1/3 w-96 h-96 rounded-full blur-[120px] mix-blend-screen opacity-40 animate-pulse delay-1000 ${isDarkMode ? 'bg-purple-600' : 'bg-purple-400'}`} />
+
+        {/* Grid Pattern */}
+        <div className={`absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20`} />
+        <div className={`absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]`} />
+      </div>
+
+      {/* Admin Modal */}
       {showAdminModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={() => setShowAdminModal(false)} />
-          <div className="relative w-full max-w-sm bg-slate-900 border border-slate-700 rounded-3xl p-8 shadow-2xl">
-            <button
-              onClick={() => setShowAdminModal(false)}
-              className="absolute top-4 right-4 p-2 hover:bg-slate-800 rounded-xl transition-colors"
-            >
-              <X size={20} />
-            </button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowAdminModal(false)} />
+          <div className="relative w-full max-w-sm rounded-3xl p-8 border shadow-2xl overflow-hidden bg-bg-surface border-white/10">
+            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-rose-500" />
+            <button onClick={() => setShowAdminModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-current"><X size={20} /></button>
 
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-rose-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Shield className="text-rose-500" size={32} />
+            <div className="text-center mb-8 mt-2">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-rose-500 to-orange-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-rose-500/20">
+                <Shield className="text-white" size={24} />
               </div>
-              <h2 className="text-2xl font-black uppercase tracking-tight">Admin Girişi</h2>
-              <p className="text-sm opacity-60 mt-1">Yönetici şifresini girin</p>
+              <h3 className="font-outfit text-xl font-bold">Yönetici Girişi</h3>
             </div>
 
             <div className="space-y-4">
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                <input
-                  type="password"
-                  value={adminPassword}
-                  onChange={e => {
-                    setAdminPassword(e.target.value);
-                    setAdminError('');
-                  }}
-                  onKeyDown={e => e.key === 'Enter' && handleAdminLogin()}
-                  placeholder="Şifre"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-12 pr-4 py-4 text-sm outline-none focus:border-rose-500 transition-colors"
-                  autoFocus
-                />
-              </div>
-
-              {adminError && (
-                <p className="text-rose-500 text-sm text-center font-bold">{adminError}</p>
-              )}
-
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={e => setAdminPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAdminLogin()}
+                placeholder="Erişim Şifresi"
+                className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-rose-500/50 transition-all bg-bg-deep/50 border-white/10 text-text-main placeholder:text-text-muted"
+                autoFocus
+              />
+              {authError && <p className="text-rose-500 text-xs font-semibold text-center">{authError}</p>}
               <button
                 onClick={handleAdminLogin}
-                disabled={isLoggingIn || !adminPassword}
-                className="w-full py-4 bg-rose-500 text-white rounded-2xl font-black uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2"
+                disabled={loadingAdmin}
+                className="w-full py-3 bg-bg-deep text-text-main rounded-xl font-bold hover:bg-bg-surface transition-colors disabled:opacity-50"
               >
-                {isLoggingIn ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Giriş Yap'}
+                {loadingAdmin ? 'Doğrulanıyor...' : 'Giriş Yap'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Theme Toggle Button */}
-      <button
-        onClick={toggleTheme}
-        className={`fixed top-6 right-6 md:top-8 md:right-12 z-[200] w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-2xl shadow-xl transition-all hover:scale-110 active:scale-90 group ${isDarkMode ? 'bg-slate-800/80 backdrop-blur-md border border-white/10' : 'bg-white/80 backdrop-blur-md border border-slate-200'}`}
-      >
-        {isDarkMode ? (
-          <Sun size={20} className="text-amber-400 group-hover:rotate-45 transition-transform" />
-        ) : (
-          <Moon size={20} className="text-indigo-600 group-hover:-rotate-12 transition-transform" />
-        )}
-      </button>
-
-      {/* Header Navigation */}
-      <header className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b ${isDarkMode ? 'bg-slate-950/80 border-white/10' : 'bg-white/80 border-slate-200'}`}>
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={handleLogoClick}
-            className={`text-2xl font-black uppercase tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-900'} hover:text-rose-500 transition-colors cursor-pointer`}
-          >
-            Silius
+      {/* Navbar */}
+      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrollY > 20 ? 'py-4 bg-slate-950/50 backdrop-blur-xl border-b border-white/5' : 'py-6 bg-transparent'}`}>
+        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
+          <button onClick={handleLogoClick} className="flex items-center gap-2 group">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-rose-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+              <Sparkles size={16} className="text-white" fill="white" />
+            </div>
+            <span className="text-xl font-black font-outfit tracking-tight text-text-main">Silius</span>
           </button>
-          <nav className="hidden md:flex items-center gap-8">
-            <Link to="/vibeler" className={`text-sm font-bold uppercase tracking-widest transition-colors ${isDarkMode ? 'text-white hover:text-indigo-400' : 'text-slate-700 hover:text-indigo-600'}`}>
-              Vibeler
-            </Link>
-            <Link to="/topluluk" className={`text-sm font-bold uppercase tracking-widest transition-colors ${isDarkMode ? 'text-white hover:text-indigo-400' : 'text-slate-700 hover:text-indigo-600'}`}>
-              Topluluk
-            </Link>
-            <Link to="/mekanlar" className={`text-sm font-bold uppercase tracking-widest transition-colors ${isDarkMode ? 'text-white hover:text-indigo-400' : 'text-slate-700 hover:text-indigo-600'}`}>
-              Mekanlar
-            </Link>
-            <Link to="/about" className={`text-sm font-bold uppercase tracking-widest transition-colors ${isDarkMode ? 'text-white hover:text-indigo-400' : 'text-slate-700 hover:text-indigo-600'}`}>
-              Hakkımızda
-            </Link>
-            <Link to="/auth" className="px-6 py-2 bg-indigo-600 text-white rounded-full text-sm font-bold uppercase tracking-widest hover:bg-indigo-700 transition-colors">
-              Giriş
-            </Link>
-          </nav>
+
+          <div className="hidden md:flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/5 backdrop-blur-md">
+            {[
+              { name: 'Keşfet', path: '/vibeler' },
+              { name: 'Topluluk', path: '/topluluk' },
+              { name: 'Mekanlar', path: '/mekanlar' },
+            ].map(link => (
+              <Link key={link.name} to={link.path} className="px-5 py-2 rounded-full text-sm font-semibold transition-all text-text-muted hover:text-text-main hover:bg-white/10">
+                {link.name}
+              </Link>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button onClick={toggleTheme} className="p-2.5 rounded-full transition-colors bg-white/5 hover:bg-white/10 text-indigo-500 dark:text-amber-300">
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            {user ? (
+              <Link to="/home" className="px-6 py-2.5 bg-white text-slate-900 rounded-full font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-white/10 flex items-center gap-2">
+                Uygulamaya Git <ArrowRight size={16} />
+              </Link>
+            ) : (
+              <Link to="/auth" className="px-6 py-2.5 bg-white text-slate-900 rounded-full font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-white/10 flex items-center gap-2">
+                Giriş Yap <ArrowRight size={16} />
+              </Link>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <header className="relative pt-40 pb-20 px-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+
+          <div className="space-y-8 relative z-10">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 text-sm font-bold animate-fade-in-up">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+              </span>
+              Beta v2.4 Yayında
+            </div>
+
+            <h1 className="text-6xl md:text-8xl font-black font-outfit leading-[0.95] tracking-tight">
+              <span className="block text-slate-400/50">YENİ NESİL</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-rose-500 animate-gradient-x">SOSYALİK</span>
+            </h1>
+
+            <p className="text-xl md:text-2xl font-medium leading-relaxed max-w-lg text-text-muted">
+              Silius, seni algoritmalarla değil, <span className="text-indigo-500">gerçek hislerle</span> eşleştirir. Şehrin ritmini yakala, kabileni bul.
+            </p>
+
+            <div className="flex flex-wrap gap-4 pt-4">
+              {user ? (
+                <Link to="/home" className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold flex items-center gap-3 transition-all hover:-translate-y-1 shadow-xl shadow-indigo-600/30">
+                  Uygulamaya Git <Zap className="fill-current" size={18} />
+                </Link>
+              ) : (
+                <Link to="/auth" className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold flex items-center gap-3 transition-all hover:-translate-y-1 shadow-xl shadow-indigo-600/30">
+                  Hemen Katıl <Zap className="fill-current" size={18} />
+                </Link>
+              )}
+              <button className="px-8 py-4 rounded-2xl font-bold border flex items-center gap-3 transition-all hover:-translate-y-1 border-white/10 hover:bg-white/5 bg-white/5">
+                Nasıl Çalışır?
+              </button>
+            </div>
+
+            <div className="flex items-center gap-4 pt-8 opacity-70">
+              <div className="flex -space-x-3">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="w-10 h-10 rounded-full border-2 border-bg-deep overflow-hidden">
+                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i * 123}`} alt="User" />
+                  </div>
+                ))}
+                <div className="w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold border-bg-deep bg-bg-surface">+2k</div>
+              </div>
+              <div className="text-sm font-medium">Bu hafta <span className="text-rose-500 font-bold">1,240</span> kişi katıldı</div>
+            </div>
+          </div>
+
+          <div className="relative h-[600px] hidden lg:block perspective-1000">
+            {/* 3D Floating Cards Effect */}
+            <div className="absolute top-10 right-10 w-80 h-[450px] bg-slate-900 rounded-[2rem] border border-white/10 shadow-2xl transform rotate-y-12 rotate-z-6 animate-float z-10 overflow-hidden">
+              <img src="https://images.unsplash.com/photo-1545128485-c400e7702796?w=600&fit=crop" className="w-full h-2/3 object-cover" />
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-1 rounded-lg">NEON</span>
+                  <Star className="text-yellow-400 fill-current" size={16} />
+                </div>
+                <h3 className="text-white font-bold text-xl font-outfit">Gece Sürüşü</h3>
+                <div className="flex items-center gap-2 mt-2 text-slate-400 text-sm">
+                  <MapPin size={14} /> Beşiktaş Sahil
+                </div>
+              </div>
+            </div>
+
+            <div className="absolute top-32 left-0 w-72 h-[400px] bg-white rounded-[2rem] shadow-2xl transform -rotate-y-12 -rotate-z-3 animate-float animation-delay-2000 z-20 overflow-hidden border border-slate-100">
+              <img src="https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=600&fit=crop" className="w-full h-2/3 object-cover" />
+              <div className="p-6">
+                <h3 className="text-slate-900 font-bold text-xl font-outfit">Haftasonu Koşusu</h3>
+                <div className="flex -space-x-2 mt-4">
+                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" className="w-8 h-8 rounded-full border border-white" />
+                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" className="w-8 h-8 rounded-full border border-white" />
+                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=John" className="w-8 h-8 rounded-full border border-white" />
+                </div>
+              </div>
+            </div>
+
+            {/* Decorative Elements */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500 rounded-full blur-[80px] opacity-40 animate-pulse" />
+            <div className="absolute bottom-0 left-20 w-40 h-40 bg-indigo-500 rounded-full blur-[80px] opacity-40 animate-pulse animation-delay-1000" />
+          </div>
+
         </div>
       </header>
 
-      {/* Background Ambience */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        {/* Background Image */}
-        <div className={`absolute inset-0 bg-[url('https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1600&auto=format&fit=crop')] bg-cover bg-center ${isDarkMode ? 'opacity-15' : 'opacity-10'}`}></div>
+      {/* Keşfetmeye Başla Section - Redesigned */}
+      <section className="py-32 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
 
-        {/* Gradient Overlay */}
-        <div className={`absolute inset-0 bg-gradient-to-b ${isDarkMode ? 'from-slate-950 via-slate-950/80 to-slate-950' : 'from-slate-50 via-slate-50/80 to-slate-50'}`}></div>
+            {/* Left Content */}
+            <div className="lg:col-span-5 space-y-10 relative z-10">
+              <div className="absolute -left-20 -top-20 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] pointer-events-none" />
 
-        {/* Glowing orbs */}
-        <div className={`absolute top-[10%] left-[10%] w-96 h-96 blur-[150px] rounded-full animate-pulse ${isDarkMode ? 'bg-indigo-600/20' : 'bg-indigo-600/10'}`}></div>
-        <div className={`absolute bottom-[10%] right-[10%] w-96 h-96 blur-[150px] rounded-full animate-pulse ${isDarkMode ? 'bg-rose-600/20' : 'bg-rose-600/10'}`}></div>
-      </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="w-12 h-[2px] bg-rose-500"></span>
+                  <span className="text-rose-500 font-bold tracking-widest text-sm uppercase font-outfit">Keşfetmeye Başla</span>
+                </div>
 
-      {/* Hero Section */}
-      <main className="relative z-10 w-full">
-        <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-20 overflow-hidden">
+                <h2 className="text-5xl md:text-7xl font-black font-outfit leading-[0.9]">
+                  Sınırlarını <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-rose-400 animate-gradient-x">Zorla.</span>
+                </h2>
+              </div>
 
-          <div className={`transition-all duration-700 ${scrollY > 50 ? 'opacity-0 -translate-y-10' : 'opacity-100'}`}>
-            <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-md text-xs font-bold uppercase tracking-[0.3em] mb-12">
-              <Sparkles size={14} className="text-amber-400" />
-              <span>Hayatın Her Anı İçin Bir Topluluk</span>
+              <p className="text-xl text-text-muted leading-relaxed font-light">
+                Her gün aynı yerlere gitmekten sıkılmadın mı? Silius ile şehrinde daha önce fark etmediğin <span className="text-text-main font-bold text-indigo-400">vibe noktalarını</span> keşfet.
+              </p>
+
+              <div className="space-y-6">
+                {[
+                  { title: "Kişiselleştirilmiş Öneriler", icon: Sparkles, color: "text-amber-400" },
+                  { title: "Anlık Etkinlik Bildirimleri", icon: Zap, color: "text-indigo-400" },
+                  { title: "Güvenli Topluluk Deneyimi", icon: Shield, color: "text-emerald-400" }
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-4 group cursor-default">
+                    <div className={`w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center ${item.color} group-hover:scale-110 group-hover:bg-white/10 transition-all duration-300 shadow-lg`}>
+                      <item.icon size={22} />
+                    </div>
+                    <span className="text-lg font-medium text-text-main group-hover:translate-x-2 transition-transform">{item.title}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="relative text-center mb-16 z-20">
-            <h1 className="text-7xl md:text-[10rem] font-black font-outfit leading-[0.8] tracking-tighter uppercase italic drop-shadow-2xl"
-              style={{ transform: `translateY(${scrollY * 0.2}px)` }}>
-              <span className="block mb-2">ANI</span>
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-rose-500">
-                PAYLAŞ
-              </span>
-            </h1>
-          </div>
+            {/* Right Visuals - Bento Style */}
+            <div className="lg:col-span-7 relative perspective-1000">
+              {/* Decorative blobs */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-indigo-500/20 to-rose-500/20 rounded-full blur-[100px] animate-pulse" />
 
-          <p className="text-lg md:text-2xl text-center max-w-2xl mb-12 font-medium leading-relaxed text-slate-300 relative z-20">
-            Silius'ta her frekansın bir yeri var. İster sabahın ilk ışıklarında bir çalışma grubu,
-            ister gecenin karanlığında bir dans pisti. <span className="text-indigo-400 font-bold">Gerçek bağlar burada kurulur.</span>
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-6 relative z-20">
-            <Link
-              to="/auth"
-              className="px-10 py-5 bg-white text-black hover:bg-slate-200 rounded-full font-black text-lg flex items-center justify-center gap-3 transition-all transform hover:scale-105 shadow-[0_0_50px_-10px_rgba(255,255,255,0.3)]"
-            >
-              HEMEN KATIL <ArrowRight size={20} />
-            </Link>
-            <Link
-              to="/vibeler"
-              className="px-10 py-5 border border-white/20 hover:bg-white/10 backdrop-blur-md rounded-full font-black text-lg flex items-center justify-center gap-3 transition-all hover:scale-105"
-            >
-              VIBELARI KEŞFET
-            </Link>
-          </div>
-        </section>
-
-        {/* Marquee Section */}
-        <div className="py-24 bg-gradient-to-r from-indigo-600/30 via-purple-600/30 to-rose-600/30 backdrop-blur-sm border-y border-white/20 overflow-hidden relative z-20 -rotate-1 shadow-[0_10px_100px_rgba(99,102,241,0.3)]">
-          <div className="animate-marquee whitespace-nowrap flex gap-20 items-center w-full">
-            <div className="flex gap-20 min-w-full items-center justify-around animate-marquee">
-              <span className="text-6xl md:text-9xl font-black font-outfit text-white uppercase italic drop-shadow-[0_0_30px_rgba(255,255,255,0.5)] hover:scale-110 transition-transform">KAHVE SOHBETLERİ</span>
-              <span className="text-6xl md:text-9xl font-black font-outfit text-indigo-300 uppercase italic drop-shadow-[0_0_30px_rgba(99,102,241,0.8)] hover:scale-110 transition-transform">ÇALIŞMA GRUPLARI</span>
-              <span className="text-6xl md:text-9xl font-black font-outfit text-white uppercase italic drop-shadow-[0_0_30px_rgba(255,255,255,0.5)] hover:scale-110 transition-transform">NEON GECELERİ</span>
-              <span className="text-6xl md:text-9xl font-black font-outfit text-rose-300 uppercase italic drop-shadow-[0_0_30px_rgba(244,63,94,0.8)] hover:scale-110 transition-transform">SESSİZ OKUMALAR</span>
-              <span className="text-6xl md:text-9xl font-black font-outfit text-white uppercase italic drop-shadow-[0_0_30px_rgba(255,255,255,0.5)] hover:scale-110 transition-transform">YÜRÜYÜŞ ROTALARI</span>
-              {/* Duplicate for seamless loop */}
-              <span className="text-6xl md:text-9xl font-black font-outfit text-white uppercase italic drop-shadow-[0_0_30px_rgba(255,255,255,0.5)] hover:scale-110 transition-transform">KAHVE SOHBETLERİ</span>
-              <span className="text-6xl md:text-9xl font-black font-outfit text-indigo-300 uppercase italic drop-shadow-[0_0_30px_rgba(99,102,241,0.8)] hover:scale-110 transition-transform">ÇALIŞMA GRUPLARI</span>
+              <div className="grid grid-cols-2 gap-6 transform rotate-y-6 rotate-z-2 transition-transform duration-500 hover:rotate-0">
+                <div className="space-y-6 mt-12">
+                  <div className="h-64 rounded-[2.5rem] bg-indigo-500/10 border border-white/5 overflow-hidden relative group shadow-2xl">
+                    <img src="https://images.unsplash.com/photo-1545128485-c400e7702796?w=600&q=80" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                    <div className="absolute bottom-0 left-0 p-6">
+                      <span className="text-white font-bold text-xl font-outfit">Neon Geceler</span>
+                      <div className="h-1 w-8 bg-indigo-500 mt-2 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="h-48 rounded-[2.5rem] bg-rose-500/10 border border-white/5 overflow-hidden relative group shadow-2xl">
+                    <img src="https://images.unsplash.com/photo-1514525253440-b393452e3726?w=600&q=80" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                    <div className="absolute bottom-0 left-0 p-6">
+                      <span className="text-white font-bold text-xl font-outfit">Şehir Işıkları</span>
+                      <div className="h-1 w-8 bg-rose-500 mt-2 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  <div className="h-48 rounded-[2.5rem] bg-purple-500/10 border border-white/5 overflow-hidden relative group shadow-2xl">
+                    <img src="https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=600&q=80" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                    <div className="absolute bottom-0 left-0 p-6">
+                      <span className="text-white font-bold text-xl font-outfit">Sörf & Sahil</span>
+                      <div className="h-1 w-8 bg-purple-500 mt-2 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="h-64 rounded-[2.5rem] bg-emerald-500/10 border border-white/5 overflow-hidden relative group shadow-2xl">
+                    <img src="https://images.unsplash.com/photo-1502444330042-d1a1ddf9bb5b?w=600&q=80" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                    <div className="absolute bottom-0 left-0 p-6">
+                      <span className="text-white font-bold text-xl font-outfit">Doğa Yürüyüşü</span>
+                      <div className="h-1 w-8 bg-emerald-500 mt-2 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Services Section */}
-        <section className="py-32 relative">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-
-              <div className="col-span-1 lg:col-span-4 lg:sticky lg:top-32 h-fit">
-                <img
-                  src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&auto=format&fit=crop"
-                  alt="Social Life"
-                  className="w-full h-80 object-cover rounded-[2rem] mb-8 opacity-80 hover:opacity-100 transition-opacity"
-                />
-                <div className="inline-block px-4 py-1 mb-6 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs font-bold uppercase tracking-widest">
-                  Hizmetlerimiz
-                </div>
-                <h2 className="text-5xl md:text-7xl font-black font-outfit uppercase italic leading-[0.9] mb-8">
-                  SOSYAL <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-500">DÜNYANI</span> <br />
-                  YENİDEN <br />
-                  TASARLA
-                </h2>
-                <p className="text-lg text-slate-400 leading-relaxed max-w-sm">
-                  Silius ile sınırları kaldır. Sadece bir uygulama değil, bir yaşam tarzı inşa ediyoruz.
-                </p>
-              </div>
-
-              <div className="col-span-1 lg:col-span-8 grid gap-8">
-                <div className="group relative p-10 md:p-14 rounded-[3rem] bg-indigo-900/10 border border-white/5 hover:border-indigo-500/50 transition-all duration-500 hover:-translate-y-2 overflow-hidden">
-                  <img src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=800&auto=format&fit=crop" className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-20 transition-opacity duration-700 mix-blend-overlay" />
-                  <div className="relative z-10">
-                    <div className="mb-8 w-16 h-16 bg-indigo-500 rounded-2xl flex items-center justify-center transform group-hover:rotate-6 transition-transform">
-                      <Users className="text-white" size={32} />
-                    </div>
-                    <h3 className="text-4xl font-black font-outfit uppercase italic mb-4 text-indigo-100">Arkadaş Bul</h3>
-                    <p className="text-xl text-slate-400 font-light leading-relaxed">
-                      Canınız sıkıldığında anında kafa dengi insanlarla tanışın. Yalnız kalmak bir seçenek değil, bir tercih olsun.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="group relative p-10 md:p-14 rounded-[3rem] bg-rose-900/10 border border-white/5 hover:border-rose-500/50 transition-all duration-500 hover:-translate-y-2 overflow-hidden">
-                  <img src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format&fit=crop" className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-20 transition-opacity duration-700 mix-blend-overlay" />
-                  <div className="relative z-10">
-                    <div className="mb-8 w-16 h-16 bg-rose-500 rounded-2xl flex items-center justify-center transform group-hover:-rotate-6 transition-transform">
-                      <Zap className="text-white" size={32} />
-                    </div>
-                    <h3 className="text-4xl font-black font-outfit uppercase italic mb-4 text-rose-100">Sınırsız Eğlence</h3>
-                    <p className="text-xl text-slate-400 font-light leading-relaxed">
-                      Şehrin en iyi etkinlikleri, partileri ve buluşmaları parmaklarının ucunda. Ritmi yakala.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="group relative p-10 md:p-14 rounded-[3rem] bg-amber-900/10 border border-white/5 hover:border-amber-500/50 transition-all duration-500 hover:-translate-y-2 overflow-hidden">
-                  <img src="https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&auto=format&fit=crop" className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-20 transition-opacity duration-700 mix-blend-overlay" />
-                  <div className="relative z-10">
-                    <div className="mb-8 w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center transform group-hover:rotate-6 transition-transform">
-                      <Star className="text-white" size={32} />
-                    </div>
-                    <h3 className="text-4xl font-black font-outfit uppercase italic mb-4 text-amber-100">Topluluk</h3>
-                    <p className="text-xl text-slate-400 font-light leading-relaxed">
-                      İlgi alanlarına göre özelleşmiş topluluklara katıl veya kendi kabileni oluştur. Birlikte daha güçlüyüz.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+      {/* Categories Modern Slider */}
+      <section className="py-24 border-t border-white/5 bg-gradient-to-b from-transparent to-black/20">
+        <div className="max-w-7xl mx-auto px-6 mb-16 flex items-end justify-between">
+          <div>
+            <span className="text-indigo-500 font-bold tracking-widest text-xs uppercase mb-3 block font-outfit">Kendini Bul</span>
+            <h2 className="text-4xl md:text-5xl font-black font-outfit">Popüler Kategoriler</h2>
           </div>
-        </section>
-
-        {/* Why Choose Us */}
-        <section className="py-32 bg-slate-900/50 border-y border-white/5">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="mb-24">
-              <span className="text-rose-500 font-bold tracking-widest uppercase text-sm mb-4 block">Why Us</span>
-              <h2 className="text-6xl md:text-8xl font-black font-outfit uppercase italic leading-[0.9]">
-                NEDEN BİZİ <br /> SEÇMELİSİNİZ?
-              </h2>
+          <Link to="/mekanlar" className="group flex items-center gap-3 text-text-muted hover:text-white transition-colors px-6 py-3 rounded-full border border-white/5 hover:bg-white/5">
+            <span className="font-bold">Tümünü Gör</span>
+            <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+              <ArrowRight size={14} />
             </div>
+          </Link>
+        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-              {[
-                { id: "01", title: "Maksimum Güvenlik", icon: Shield, desc: "En üst düzey güvenlik önlemleriyle, huzurla sosyalleşin. Verileriniz ve deneyiminiz bizim için kutsal.", color: 'indigo' },
-                { id: "02", title: "Eğlence ve Macera", icon: Zap, desc: "Sıradanlıktan uzak, macera dolu deneyimler. Her gün yeni bir hikaye yazmaya hazır mısın?", color: 'rose' },
-                { id: "03", title: "Neden Olmasın?", icon: Heart, desc: "Hayatınıza yeni bir renk katmak, konfor alanınızdan çıkmak ve gerçek potansiyelinizi keşfetmek için.", color: 'emerald' }
-              ].map((item, i) => (
-                <div key={i} className="group p-8 rounded-[2rem] bg-white/5 hover:bg-white/10 transition-all duration-500 hover:scale-[1.02]">
-                  <div className={`text-6xl font-black font-outfit text-${item.color}-500/30 mb-6`}>{item.id}</div>
-                  <h3 className="text-2xl font-black font-outfit uppercase italic mb-4 flex items-center gap-3">
-                    {item.title}
-                  </h3>
-                  <p className="text-slate-400 leading-relaxed">
-                    {item.desc}
+        <div className="relative w-full overflow-hidden">
+          <div className="flex gap-6 overflow-x-auto pb-12 px-6 no-scrollbar snap-x scroll-padding-x-6">
+            {[
+              { name: 'Müzik & Sanat', img: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae', count: '120+ Etkinlik', color: 'bg-rose-500' },
+              { name: 'Kahve & Sohbet', img: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf', count: '85+ Mekan', color: 'bg-amber-500' },
+              { name: 'Spor & Outdoor', img: 'https://images.unsplash.com/photo-1517649763962-0c623066013b', count: '45+ Grup', color: 'bg-emerald-500' },
+              { name: 'Teknoloji', img: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c', count: '20+ Workshop', color: 'bg-blue-500' },
+              { name: 'Oyun', img: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc', count: 'Turnuvalar', color: 'bg-purple-500' },
+              { name: 'Eğitim', img: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6', count: 'Seminerler', color: 'bg-cyan-500' },
+              { name: 'Gezi', img: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828', count: 'Turlar', color: 'bg-orange-500' },
+            ].map((cat, i) => (
+              <Link to="/mekanlar" key={i} className="relative flex-none w-[245px] h-[350px] rounded-[2.5rem] overflow-hidden group snap-center cursor-pointer shadow-xl border border-white/5">
+                <div className="absolute inset-0 bg-slate-900 animate-pulse" /> {/* Placeholder */}
+                <img src={`${cat.img}?w=600&q=80`} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 group-hover:rotate-1" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+
+                <div className="absolute top-6 right-6">
+                  <div className={`w-3 h-3 rounded-full ${cat.color} shadow-[0_0_15px_rgba(255,255,255,0.5)]`} />
+                </div>
+
+                <div className="absolute bottom-0 left-0 right-0 p-8 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                  <h3 className="text-3xl font-black font-outfit text-white mb-2 leading-none">{cat.name}</h3>
+                  <div className="h-1 w-0 bg-white transition-all duration-500 group-hover:w-full mb-4 opacity-50" />
+                  <p className="text-sm text-white/90 font-bold tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75 transform translate-y-4 group-hover:translate-y-0 flex items-center gap-2">
+                    {cat.count} <ArrowRight size={12} />
                   </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-32 relative overflow-hidden">
+        {/* Background Glows */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-rose-500/10 rounded-full blur-[100px] pointer-events-none" />
+
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50" />
+
+        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
+          <h2 className="text-6xl md:text-8xl font-black font-outfit mb-8 tracking-tight leading-[1.1]">
+            Hazır mısın? <br />
+            <span className="relative inline-block mt-2">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-500 via-purple-500 to-indigo-500 animate-gradient-x">Hikayeni Başlat.</span>
+              <div className="absolute -bottom-4 left-0 right-0 h-4 bg-gradient-to-r from-rose-500 to-indigo-500 blur-xl opacity-30" />
+            </span>
+          </h2>
+
+          <p className="text-xl md:text-2xl font-light opacity-80 mb-12 max-w-2xl mx-auto leading-relaxed">
+            Binlerce kişi Silius'ta <span className="text-indigo-400 font-medium">yeni arkadaşlar ediniyor</span>, etkinlikler düzenliyor ve hayatı <span className="text-rose-400 font-medium">dolu dolu yaşıyor.</span>
+          </p>
+
+          <div className="relative group inline-block">
+            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-rose-500 rounded-full blur opacity-40 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+            {user ? (
+              <Link to="/home" className="relative inline-flex items-center gap-4 px-12 py-6 bg-text-main text-bg-deep rounded-full font-bold text-xl hover:scale-105 transition-all shadow-2xl">
+                <span>Uygulamaya Git</span>
+                <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            ) : (
+              <Link to="/auth" className="relative inline-flex items-center gap-4 px-12 py-6 bg-text-main text-bg-deep rounded-full font-bold text-xl hover:scale-105 transition-all shadow-2xl">
+                <span>Ücretsiz Hesap Oluştur</span>
+                <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            )}
+          </div>
+
+          {/* Trust Indicators (Marquee) */}
+          <div className="mt-24 w-screen relative left-1/2 -translate-x-1/2 overflow-hidden border-y border-white/10 py-12 bg-black/40 backdrop-blur-md transform -skew-y-2 origin-left">
+            <div className="inline-flex animate-marquee whitespace-nowrap items-center hover:paused">
+              {[...Array(1)].map((_, i) => (
+                <div key={i} className="flex items-center gap-24 px-8">
+                  <div className="flex items-end gap-3 group">
+                    <span className="text-7xl md:text-8xl font-black font-outfit text-white drop-shadow-[0_0_20px_rgba(99,102,241,0.6)] group-hover:drop-shadow-[0_0_40px_rgba(99,102,241,0.9)] transition-all duration-300 italic">
+                      {stats.users}
+                    </span>
+                    <span className="text-base font-bold tracking-widest text-indigo-400 mb-5 uppercase italic">Kullanıcı</span>
+                  </div>
+
+                  <Zap size={18} className="text-yellow-400/60" />
+
+                  <div className="flex items-end gap-3 group">
+                    <span className="text-7xl md:text-8xl font-black font-outfit text-white drop-shadow-[0_0_20px_rgba(168,85,247,0.6)] group-hover:drop-shadow-[0_0_40px_rgba(168,85,247,0.9)] transition-all duration-300 italic">
+                      {stats.events}
+                    </span>
+                    <span className="text-base font-bold tracking-widest text-purple-400 mb-5 uppercase italic">Vibe</span>
+                  </div>
+
+                  <Zap size={18} className="text-yellow-400/60" />
+
+                  <div className="flex items-end gap-3 group">
+                    <span className="text-7xl md:text-8xl font-black font-outfit text-white drop-shadow-[0_0_20px_rgba(244,63,94,0.6)] group-hover:drop-shadow-[0_0_40px_rgba(244,63,94,0.9)] transition-all duration-300 italic">
+                      {stats.vibeScore}
+                    </span>
+                    <span className="text-base font-bold tracking-widest text-rose-400 mb-5 uppercase italic">Toplam Puan</span>
+                  </div>
+
+                  <Zap size={18} className="text-yellow-400/60" />
                 </div>
               ))}
             </div>
-          </div>
-        </section>
 
-        {/* Vibes Grid */}
-        <section className="py-40 relative">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-20">
-              <h2 className="text-6xl md:text-9xl font-black font-outfit uppercase italic leading-none mb-6">
-                HER AN <br /> <span className="text-indigo-400">BİR VIBE</span>
-              </h2>
-              <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-                Hayat sadece partilerden ibaret değil. Silius'ta her ruh haline uygun bir topluluk seni bekliyor.
+            <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-slate-950 to-transparent z-10 pointer-events-none" />
+            <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-slate-950 to-transparent z-10 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Expanded Footer */}
+        <div className="max-w-7xl mx-auto px-6 mt-32 border-t border-opacity-10 dark:border-white/10 border-black/10 pt-20">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-16">
+            <div className="col-span-2 md:col-span-1 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-rose-600 flex items-center justify-center">
+                  <Sparkles size={16} className="text-white" fill="white" />
+                </div>
+                <span className="text-xl font-black font-outfit">Silius</span>
+              </div>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Yeni nesil sosyalleşme platformu. Şehrin ritmini yakala, gerçek bağlar kur.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                { title: "Sessiz Üretim", sub: "Odak Modu", img: "https://images.unsplash.com/photo-1497032628192-86f99bcd76bc?w=800&auto=format" },
-                { title: "Sabah Ritüeli", sub: "Huzurlu Anlar", img: "https://images.unsplash.com/photo-1511081692775-05d0f180a065?w=800&auto=format" },
-                { title: "Gece Keşfi", sub: "Yüksek Enerji", img: "https://images.unsplash.com/photo-1545128485-c400e7702796?w=800&auto=format" },
-                { title: "Açık Hava", sub: "Denge", img: "https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=800&auto=format" }
-              ].map((vibe, i) => (
-                <Link to="/auth" key={i} className="group relative h-[450px] rounded-[2rem] overflow-hidden">
-                  <img src={vibe.img} alt={vibe.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all"></div>
-                  <div className="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-black/80 to-transparent">
-                    <span className="text-xs font-bold uppercase tracking-widest text-amber-400 mb-2 block">{vibe.sub}</span>
-                    <h3 className="text-3xl font-black font-outfit uppercase italic text-white">
-                      {vibe.title.split(' ')[0]} <br /> {vibe.title.split(' ')[1]}
-                    </h3>
-                  </div>
-                </Link>
-              ))}
+            <div>
+              <h4 className="font-bold mb-6">Keşfet</h4>
+              <ul className="space-y-4 text-sm opacity-60">
+                <li><Link to="/vibeler" className="hover:text-indigo-500 hover:opacity-100 transition-all">Vibeler</Link></li>
+                <li><Link to="/mekanlar" className="hover:text-indigo-500 hover:opacity-100 transition-all">Mekanlar</Link></li>
+                <li><Link to="/topluluk" className="hover:text-indigo-500 hover:opacity-100 transition-all">Topluluklar</Link></li>
+                <li><Link to="/events" className="hover:text-indigo-500 hover:opacity-100 transition-all">Etkinlikler</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-bold mb-6">Kurumsal</h4>
+              <ul className="space-y-4 text-sm opacity-60">
+                <li><Link to="/about" className="hover:text-indigo-500 hover:opacity-100 transition-all">Hakkımızda</Link></li>
+                <li><Link to="/contact" className="hover:text-indigo-500 hover:opacity-100 transition-all">İletişim</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-bold mb-6">Yasal</h4>
+              <ul className="space-y-4 text-sm opacity-60">
+                <li><Link to="/privacy" className="hover:text-indigo-500 hover:opacity-100 transition-all">Gizlilik Politikası</Link></li>
+                <li><Link to="/terms" className="hover:text-indigo-500 hover:opacity-100 transition-all">Kullanım Koşulları</Link></li>
+                <li><Link to="/guidelines" className="hover:text-indigo-500 hover:opacity-100 transition-all">Topluluk Kuralları</Link></li>
+              </ul>
             </div>
           </div>
-        </section>
 
-        {/* CTA */}
-        <section className="py-40 relative overflow-hidden text-center bg-indigo-900/40">
-          <div className="absolute inset-0 z-0">
-            <img
-              src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1600&auto=format&fit=crop"
-              alt="Party"
-              className="w-full h-full object-cover opacity-20 mix-blend-luminosity"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950"></div>
-          </div>
-
-          <div className="relative z-10 px-6">
-            <h2 className="text-6xl md:text-[8rem] font-black font-outfit uppercase italic leading-[0.8] mb-12 text-white">
-              SIRADAKİ <br /> BAĞLANTIN <br /> BURADA
-            </h2>
-            <Link
-              to="/auth"
-              className="inline-flex px-16 py-6 bg-white text-indigo-900 rounded-full font-black text-2xl uppercase tracking-widest hover:scale-105 transition-transform shadow-2xl"
-            >
-              KEŞFETMEYE BAŞLA
-            </Link>
-          </div>
-        </section>
-      </main>
-
-      {/* Footer */}
-      <footer className={`py-24 border-t relative z-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 text-white border-slate-800' : 'bg-slate-100 text-slate-900 border-slate-200'}`}>
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-12">
-          <div className="md:col-span-2">
-            <span className={`text-3xl font-black uppercase tracking-tighter mb-6 block ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Silius</span>
-            <p className={`font-medium max-w-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              Geleceğin sosyal ağını bugün inşa ediyoruz. Hayatın her anını anlamlı kılmak için.
-            </p>
-          </div>
-          <div>
-            <h4 className={`font-bold uppercase tracking-widest mb-6 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Keşfet</h4>
-            <div className={`flex flex-col gap-3 font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              <Link to="/vibeler" className={`transition-colors ${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-600'}`}>Vibeler</Link>
-              <Link to="/topluluk" className={`transition-colors ${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-600'}`}>Topluluk</Link>
-              <Link to="/mekanlar" className={`transition-colors ${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-600'}`}>Mekanlar</Link>
-            </div>
-          </div>
-          <div>
-            <h4 className={`font-bold uppercase tracking-widest mb-6 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Bilgi</h4>
-            <div className={`flex flex-col gap-3 font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              <Link to="/about" className={`transition-colors ${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-600'}`}>Hakkımızda</Link>
-              <Link to="/contact" className={`transition-colors ${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-600'}`}>İletişim</Link>
-              <Link to="/security" className={`transition-colors ${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-600'}`}>Güvenlik</Link>
+          <div className="border-t border-opacity-10 dark:border-white/10 border-black/10 pt-8 flex flex-col md:flex-row justify-between items-center opacity-60 text-sm">
+            <p>© 2024 Silius Platform. Tüm hakları saklıdır.</p>
+            <div className="flex gap-6 mt-4 md:mt-0">
+              {/* Social Icons Placeholder */}
+              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 cursor-pointer transition-colors"><Globe size={14} /></div>
+              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 cursor-pointer transition-colors"><MapPin size={14} /></div>
             </div>
           </div>
         </div>
+      </section>
 
-        <div className={`max-w-7xl mx-auto px-6 mt-20 pt-8 border-t flex flex-col md:flex-row items-center justify-between text-slate-500 font-medium text-sm ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-          <span>&copy; 2024 Silius Platform. Tüm hakları saklıdır.</span>
-          <div className="flex gap-6 mt-4 md:mt-0">
-            <a href="#" className={`${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-600'}`}>Privacy</a>
-            <a href="#" className={`${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-600'}`}>Terms</a>
-          </div>
-        </div>
-      </footer>
+      <style>{`
+        .perspective-1000 { perspective: 1000px; }
+        .transform-style-3d { transform-style: preserve-3d; }
+        @keyframes float {
+          0%, 100% { transform: translateY(0) rotateY(12deg) rotateZ(6deg); }
+          50% { transform: translateY(-20px) rotateY(12deg) rotateZ(6deg); }
+        }
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-marquee { animation: marquee 30s linear infinite; }
+        .hover\:paused:hover { animation-play-state: paused; }
+        .animate-spin-slow { animation: spin 8s linear infinite; }
+        
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 };

@@ -1,7 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { db } from './database';
 import Landing from './pages/Landing';
 import Auth from './pages/Auth';
 import Home from './pages/Home';
@@ -25,6 +27,8 @@ import AdminBans from './pages/admin/AdminBans';
 import PageEditor from './pages/admin/PageEditor';
 import CMSPageView from './pages/CMSPageView';
 import ProfileSetup from './pages/ProfileSetup';
+import CheckInPage from './pages/CheckInPage'; // QR Check-in Page
+import MyQR from './pages/MyQR';
 import BanScreen from './components/BanScreen';
 import { Moon, Sun, Loader2 } from 'lucide-react';
 
@@ -45,9 +49,18 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/auth" replace />;
   }
 
-  // Profili tamamlanmamış TÜM kullanıcıları ProfileSetup'a yönlendir
-  // (Hem normal kayıt hem Google OAuth - sadece ilk girişte)
-  if (profile && profile.isProfileComplete === false) {
+  // Profil henüz yüklenmediyse loading göster (flash önleme)
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+      </div>
+    );
+  }
+
+  // Profili tamamlanmamış kullanıcıları ProfileSetup'a yönlendir
+  // Sadece ilk kayıtta gösterilir (isProfileComplete false ise)
+  if (profile.isProfileComplete === false) {
     return <Navigate to="/profile-setup" replace />;
   }
 
@@ -77,18 +90,13 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <Navigate to="/" replace />;
 };
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const { user, profile, loading, signOut, isBanned, banInfo } = useAuth();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleTheme } = useTheme();
   const [forceShow, setForceShow] = useState(false);
+  const timeTrackingRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Tarayıcı tercihi kontrolü
-    const savedTheme = localStorage.getItem('silius_theme');
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark');
-    }
-
     // GÜVENLİK: App seviyesinde de timeout - 4 saniye sonra zorla göster
     const forceShowTimeout = setTimeout(() => {
       if (loading) {
@@ -100,11 +108,25 @@ const App: React.FC = () => {
     return () => clearTimeout(forceShowTimeout);
   }, [loading]);
 
-  const toggleTheme = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    localStorage.setItem('silius_theme', newMode ? 'dark' : 'light');
-  };
+  // Vibe Score - Platformda geçirilen süre takibi
+  useEffect(() => {
+    if (user && profile) {
+      // Her 5 dakikada bir süreyi güncelle (0.10 puan = 5 dk)
+      const TIME_TRACKING_INTERVAL = 5 * 60 * 1000; // 5 dakika
+
+      timeTrackingRef.current = setInterval(() => {
+        db.updateTimeSpent(user.id, 5); // 5 dakika ekle
+        console.log('📊 Vibe Score: +5 dk eklendi');
+      }, TIME_TRACKING_INTERVAL);
+
+      // Sayfa kapatıldığında veya kullanıcı çıkış yaptığında temizle
+      return () => {
+        if (timeTrackingRef.current) {
+          clearInterval(timeTrackingRef.current);
+        }
+      };
+    }
+  }, [user, profile]);
 
   const handleLogout = async () => {
     await signOut();
@@ -159,7 +181,7 @@ const App: React.FC = () => {
 
   return (
     <Router>
-      <div className={`min-h-screen transition-colors duration-500 ${isDarkMode ? 'dark bg-slate-950 text-white' : 'light bg-slate-50 text-slate-900'}`}>
+      <div className="min-h-screen transition-colors duration-500 bg-bg-deep text-text-main">
 
         {/* Global Theme Toggle Button */}
         <button
@@ -176,7 +198,7 @@ const App: React.FC = () => {
         {currentUser && <Navbar user={currentUser} onLogout={handleLogout} />}
 
         <Routes>
-          <Route path="/" element={user ? <Navigate to="/home" /> : <Landing />} />
+          <Route path="/" element={<Landing />} />
           <Route path="/auth" element={user ? <Navigate to="/home" /> : <Auth />} />
           <Route path="/about" element={<About />} />
           <Route path="/security" element={<Security />} />
@@ -185,6 +207,9 @@ const App: React.FC = () => {
           <Route path="/vibeler" element={<Vibeler />} />
           <Route path="/topluluk" element={<Topluluk />} />
           <Route path="/mekanlar" element={<Mekanlar />} />
+
+          {/* QR Check-in Route */}
+          <Route path="/checkin/:eventId" element={<CheckInPage />} />
 
           {/* CMS Pages (Public) */}
           <Route path="/page/:slug" element={<CMSPageView />} />
@@ -245,6 +270,14 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/my-qr"
+            element={
+              <ProtectedRoute>
+                <MyQR />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Admin Routes */}
           <Route
@@ -295,9 +328,19 @@ const App: React.FC = () => {
               </AdminRoute>
             }
           />
+          {/* 404 - Bilinmeyen URL → Landing sayfasına yönlendir */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </Router>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 };
 

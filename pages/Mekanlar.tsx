@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { db } from '../db';
+import { db } from '../database';
 import { Event } from '../types';
 import { MapPin, Calendar, ArrowRight, Loader2, Sparkles, Sun, Moon, Home } from 'lucide-react';
 

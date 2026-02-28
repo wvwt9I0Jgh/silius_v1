@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User } from '../types';
-import { LayoutDashboard, Users, Heart, User as UserIcon, LogOut, Bell, Zap, Globe, MapPin, Shield, FileText } from 'lucide-react';
-import { db } from '../db';
+import { LayoutDashboard, Users, Heart, User as UserIcon, LogOut, Bell, Zap, Globe, MapPin, Shield, FileText, QrCode } from 'lucide-react';
+import { db } from '../database';
 import { CMSPage } from '../types';
 
 interface NavbarProps {
@@ -71,11 +71,12 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
     { path: '/users', icon: Users, label: 'Kişiler' },
     { path: '/friends', icon: Heart, label: 'Çevrem' },
     { path: '/profile', icon: UserIcon, label: 'Ben' },
+    { path: '/my-qr', icon: QrCode, label: "QR'ım" },
   ];
 
   return (
-    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] w-[95%] max-w-3xl">
-      <div className="glass px-4 md:px-6 py-3 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center gap-2 md:gap-3 border shadow-2xl transition-all">
+    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] w-[98%] max-w-5xl">
+      <div className="glass px-2 md:px-6 py-3 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-between gap-1 md:gap-3 border shadow-2xl transition-all">
         <div className="hidden md:flex items-center gap-1 pr-4 mr-4 border-r border-slate-500/20">
           <Link to="/home" className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center font-black text-white text-lg shadow-lg shadow-indigo-600/30">S</Link>
         </div>

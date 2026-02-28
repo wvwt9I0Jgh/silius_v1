@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from '../db';
+import { db } from '../database';
 import { User, Event } from '../types';
-import { Edit2, Save, Trash2, Calendar, MapPin, Layers, Zap, Camera, Heart, Loader2, Upload } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Edit2, Save, Trash2, Calendar, MapPin, Layers, Zap, Camera, Heart, Loader2, Upload, QrCode } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import QRCode from 'react-qr-code';
 
 interface ProfileProps {
   user: User;
@@ -17,6 +18,7 @@ interface EventWithParticipants extends Event {
 
 const Profile: React.FC<ProfileProps> = ({ user }) => {
   const { updateProfile, refreshProfile } = useAuth();
+  const [searchParams] = useSearchParams();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -30,8 +32,18 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   });
   const [myEvents, setMyEvents] = useState<EventWithParticipants[]>([]);
   const [joinedEvents, setJoinedEvents] = useState<EventWithParticipants[]>([]);
+  const [activeTab, setActiveTab] = useState<'posts' | 'vibes' | 'friends' | 'qr'>('vibes');
   const [friendCount, setFriendCount] = useState(0);
+  const [vibeScore, setVibeScore] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // URL'den tab parametresini oku
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'qr') {
+      setActiveTab('qr');
+    }
+  }, [searchParams]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -62,6 +74,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       // Friend count
       const friendIds = await db.getFriendIds(user.id);
       setFriendCount(friendIds.length);
+
+      // Vibe Score
+      const score = await db.calculateVibeScore(user.id);
+      setVibeScore(score);
     } catch (error) {
       console.error('Profile data load error:', error);
     } finally {
@@ -316,7 +332,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
             </div>
 
             {/* Detaylı İstatistikler */}
-            <div className="grid grid-cols-3 gap-6 md:gap-12 mb-8 border-y border-indigo-500/10 py-8">
+            <div className="grid grid-cols-4 gap-4 md:gap-8 mb-8 border-y border-indigo-500/10 py-8">
               <div className="text-center md:text-left group cursor-default">
                 <span className="block text-3xl md:text-5xl font-black font-outfit text-rose-500 group-hover:scale-110 transition-transform">{myEvents.length}</span>
                 <span className="text-[10px] font-black opacity-50 uppercase tracking-widest">Başlatılan Vibe</span>
@@ -328,6 +344,13 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               <div className="text-center md:text-left group cursor-default">
                 <span className="block text-3xl md:text-5xl font-black font-outfit text-emerald-500 group-hover:scale-110 transition-transform">{friendCount}</span>
                 <span className="text-[10px] font-black opacity-50 uppercase tracking-widest">Bağlantı</span>
+              </div>
+              <div className="text-center md:text-left group cursor-default relative">
+                <div className="absolute -top-2 -right-2 w-4 h-4 bg-rose-500 rounded-full animate-pulse"></div>
+                <span className="block text-3xl md:text-5xl font-black font-outfit bg-gradient-to-r from-rose-500 to-indigo-500 bg-clip-text text-transparent group-hover:scale-110 transition-transform">{vibeScore.toFixed(2)}</span>
+                <span className="text-[10px] font-black opacity-50 uppercase tracking-widest flex items-center gap-1 justify-center md:justify-start">
+                  <Zap size={10} className="text-rose-500" /> VIBE SKOR
+                </span>
               </div>
             </div>
 
@@ -361,9 +384,54 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         </div>
       </div>
 
+      {/* Tablo/Sekme Kontrolü (Opsiyonel: Eğer daha fazla içerik olursa burada tab yapısı kurulabilir) */}
+      <div className="flex justify-center gap-4 mb-8">
+        <button 
+          onClick={() => setActiveTab('vibes')} 
+          className={`px-6 py-2 rounded-full font-bold transition-all ${activeTab === 'vibes' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white/5 hover:bg-white/10'}`}
+        >
+          Etkinliklerim
+        </button>
+        <button 
+          onClick={() => setActiveTab('qr')} 
+          className={`px-6 py-2 rounded-full font-bold transition-all flex items-center gap-2 ${activeTab === 'qr' ? 'bg-rose-600 text-white shadow-lg' : 'bg-white/5 hover:bg-white/10'}`}
+        >
+          <QrCode size={18} />
+          QR'ım & Check-In
+        </button>
+      </div>
+
+      {activeTab === 'qr' && (
+        <div className="animate-scale-in max-w-2xl mx-auto glass-card rounded-3xl p-8 mb-12 text-center">
+             <h3 className="text-2xl font-black font-outfit mb-2">Etkinlik QR Kodum</h3>
+             <p className="opacity-60 mb-8">Katılımcılar mekana geldiğinde bu kodu okutarak giriş yapabilir.</p>
+             
+             {myEvents.length > 0 ? (
+               <div className="space-y-8">
+                 {/* Only show QR for latest active event or list them */}
+                 {myEvents.map(event => (
+                    <div key={event.id} className="bg-white p-6 rounded-3xl shadow-xl inline-block mx-4">
+                       <QRCode value={`https://${window.location.host}/#/checkin/${event.id}`} size={200} />
+                       <p className="mt-4 font-bold text-slate-900">{event.title}</p>
+                       <p className="text-xs text-slate-500 font-mono mt-1 opacity-50">Event ID: {event.id.slice(0,8)}</p>
+                    </div>
+                 ))}
+               </div>
+             ) : (
+                <div className="py-12 bg-white/5 rounded-2xl border border-dashed border-white/20">
+                   <Zap size={48} className="mx-auto text-indigo-500/50 mb-4" />
+                   <p className="text-lg font-bold">Henüz aktif bir etkinliğin yok.</p>
+                   <Link to="/vibeler" className="text-rose-500 hover:underline mt-2 inline-block">Vibe Oluştur</Link>
+                </div>
+             )}
+        </div>
+      )}
+
+      {activeTab === 'vibes' && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Başlatılan Etkinlikler */}
         <section>
+
           <div className="flex items-center gap-4 mb-8">
             <div className="w-10 h-10 bg-rose-500 text-white rounded-xl flex items-center justify-center shadow-lg"><Layers size={20} /></div>
             <h2 className="text-2xl font-black font-outfit uppercase tracking-tighter">BAŞLATTIĞIN VIBELAR</h2>
@@ -420,6 +488,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           </div>
         </section>
       </div>
+      )}
     </div>
   );
 };
