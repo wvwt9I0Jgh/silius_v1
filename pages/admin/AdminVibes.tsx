@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../database';
 import { Event, User } from '../../types';
@@ -45,19 +45,18 @@ const AdminVibes: React.FC = () => {
     };
 
     if (!isAdmin && !hasSecretAdminAuth) {
-        navigate('/');
-        return null;
+        return <Navigate to="/" replace />;
     }
 
     const filteredVibes = vibes.filter(v => {
         const query = searchQuery.toLowerCase();
         const owner = users.get(v.user_id);
         return (
-            v.title.toLowerCase().includes(query) ||
-            v.description.toLowerCase().includes(query) ||
-            v.location.toLowerCase().includes(query) ||
-            owner?.username.toLowerCase().includes(query) ||
-            owner?.firstName.toLowerCase().includes(query)
+            (v.title || '').toLowerCase().includes(query) ||
+            (v.description || '').toLowerCase().includes(query) ||
+            (v.location || '').toLowerCase().includes(query) ||
+            (owner?.username || '').toLowerCase().includes(query) ||
+            (owner?.firstName || '').toLowerCase().includes(query)
         );
     });
 
@@ -110,12 +109,12 @@ const AdminVibes: React.FC = () => {
 
     const getCategoryLabel = (cat: string) => {
         const labels: Record<string, string> = {
-            party: '⚡ Enerji',
-            coffee: '☕ Huzur',
-            social: '🤝 Sosyal',
-            study: '🧠 Odak',
-            sport: '🏆 Hareket',
-            game: '🎮 Oyun',
+            club: '🎵 Club',
+            rave: '🔊 Rave',
+            pub: '🍺 Pub',
+            beach: '🏖️ Sahil Partisi',
+            house: '🏠 Ev Partisi',
+            street: '🛹 Sokak Partisi',
             other: '✨ Diğer'
         };
         return labels[cat] || cat;

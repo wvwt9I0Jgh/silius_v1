@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../database';
 import { useAuth } from '../context/AuthContext';
 import { Event } from '../types';
-import { Zap, Loader2, QrCode } from 'lucide-react';
+import { PartyPopper, Loader2, QrCode } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 
@@ -31,7 +31,7 @@ const MyQR: React.FC = () => {
     if (isLoading) {
         return (
              <div className="min-h-screen flex items-center justify-center bg-slate-950">
-                 <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+                 <Loader2 className="w-8 h-8 animate-spin text-fuchsia-500" />
             </div>
         );
     }
@@ -39,20 +39,20 @@ const MyQR: React.FC = () => {
     return (
         <div className="min-h-screen pb-32 pt-24 px-4 max-w-2xl mx-auto">
              <div className="glass-card rounded-[2.5rem] p-8 md:p-12 text-center animate-scale-in">
-                <div className="w-20 h-20 bg-rose-500 rounded-3xl mx-auto flex items-center justify-center shadow-xl shadow-rose-500/30 mb-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-fuchsia-500 to-violet-600 rounded-3xl mx-auto flex items-center justify-center shadow-xl shadow-fuchsia-500/30 mb-6">
                     <QrCode size={40} className="text-white" />
                 </div>
                 
                 <h1 className="text-3xl font-black font-outfit uppercase tracking-tighter mb-2">QR Kodlarım</h1>
                 <p className="opacity-60 mb-10 leading-relaxed">
-                    Etkinliklerine gelen katılımcılar bu kodları okutarak check-in yapabilirler.
+                    Partilerine gelen katılımcılar bu kodları okutarak check-in yapabilirler.
                 </p>
 
                 {myEvents.length > 0 ? (
                     <div className="space-y-12">
                         {myEvents.map(event => (
                             <div key={event.id} className="relative group">
-                                <div className="absolute inset-0 bg-gradient-to-tr from-rose-500 to-indigo-600 rounded-[2.5rem] blur-xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                                <div className="absolute inset-0 bg-gradient-to-tr from-fuchsia-500 to-violet-600 rounded-[2.5rem] blur-xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
                                 <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl relative">
                                     <div className="flex justify-center mb-6">
                                         <QRCode 
@@ -69,8 +69,8 @@ const MyQR: React.FC = () => {
                                         <div className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-mono text-slate-500 font-bold border border-slate-200">
                                             ID: {event.id.slice(0, 8)}
                                         </div>
-                                        <div className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold border border-green-200 flex items-center gap-1">
-                                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div> Aktif
+                                        <div className="px-3 py-1 bg-fuchsia-100 text-fuchsia-700 rounded-lg text-xs font-bold border border-fuchsia-200 flex items-center gap-1">
+                                            <div className="w-2 h-2 bg-fuchsia-500 rounded-full animate-pulse"></div> Aktif
                                         </div>
                                     </div>
                                 </div>
@@ -79,13 +79,13 @@ const MyQR: React.FC = () => {
                     </div>
                 ) : (
                     <div className="py-12 bg-white/5 rounded-3xl border-2 border-dashed border-white/10">
-                        <Zap size={48} className="mx-auto text-indigo-500/50 mb-4" />
-                        <p className="text-lg font-bold mb-4">Henüz aktif bir etkinliğin yok.</p>
+                        <PartyPopper size={48} className="mx-auto text-fuchsia-500/50 mb-4" />
+                        <p className="text-lg font-bold mb-4">Henüz aktif bir partin yok.</p>
                         <Link 
-                            to="/vibeler" 
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition w-auto"
+                            to="/home" 
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white rounded-xl font-bold hover:from-fuchsia-700 hover:to-violet-700 transition w-auto shadow-lg shadow-fuchsia-500/25"
                         >
-                            <Zap size={18} /> Vibe Oluştur
+                            <PartyPopper size={18} /> Parti Oluştur
                         </Link>
                     </div>
                 )}

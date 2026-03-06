@@ -3,6 +3,7 @@ import { db } from '../database';
 import { supabase } from '../lib/supabase';
 import { Users, Activity, Zap, TrendingUp, RefreshCw, Sun, Moon, Home } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 
 const Vibeler: React.FC = () => {
   const [stats, setStats] = useState({
@@ -10,7 +11,7 @@ const Vibeler: React.FC = () => {
     activeVibes: 0,
     dailyActive: 0
   });
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleTheme } = useTheme();
 
   useEffect(() => {
     const loadStats = async () => {
@@ -29,29 +30,15 @@ const Vibeler: React.FC = () => {
           dailyActive: activeRes.count || 0
         });
       } catch (error) {
-        // Fallback layout data
         console.error('Stats load failed', error);
-        setStats({ userCount: 146, activeVibes: 87, dailyActive: 50 });
+        // Keep previous stats on error, don't show fake numbers
       }
     };
     
     loadStats();
-    const interval = setInterval(loadStats, 10000);
+    const interval = setInterval(loadStats, 60000);
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('silius_theme');
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    localStorage.setItem('silius_theme', newMode ? 'dark' : 'light');
-  };
 
   return (
     <div className={`min-h-screen pt-32 px-6 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>

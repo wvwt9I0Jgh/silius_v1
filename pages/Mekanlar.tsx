@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import { db } from '../database';
 import { Event } from '../types';
 import { MapPin, Calendar, ArrowRight, Loader2, Sparkles, Sun, Moon, Home } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 const Mekanlar: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { isDarkMode, toggleTheme } = useTheme();
 
   useEffect(() => {
     db.getEvents()
@@ -16,21 +17,8 @@ const Mekanlar: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('silius_theme');
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    localStorage.setItem('silius_theme', newMode ? 'dark' : 'light');
-  };
-
   const categories: Record<string, string> = {
-    party: 'indigo', social: 'rose', coffee: 'amber', study: 'emerald', sport: 'blue', game: 'purple'
+    club: 'fuchsia', rave: 'violet', pub: 'amber', coffee: 'orange', beach: 'cyan', house: 'rose', street: 'emerald', other: 'slate'
   };
 
   return (

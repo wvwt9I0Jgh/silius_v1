@@ -16,8 +16,6 @@ export async function deleteUserAccount(userId: string): Promise<{ success: bool
     }
 
     try {
-        console.log('🗑️ Admin: Kullanıcı siliniyor:', userId);
-
         // 1. Önce Supabase Auth'tan sil
         const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
@@ -46,7 +44,6 @@ export async function deleteUserAccount(userId: string): Promise<{ success: bool
             console.warn("Users tablosu silme hatası (göz ardı edilebilir):", userError);
         }
 
-        console.log("✅ Kullanıcı başarıyla silindi:", userId);
         return { success: true, message: "Kullanıcı başarıyla silindi" };
 
     } catch (error) {
@@ -91,7 +88,7 @@ export async function updateUserBanStatus(userId: string, banned: boolean): Prom
 
     try {
         const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-            ban_duration: banned ? 'none' : '0'
+            ban_duration: banned ? '876000h' : 'none'
         });
 
         if (error) {
@@ -128,7 +125,6 @@ export async function updateUserRoleAsAdmin(userId: string, role: 'user' | 'admi
             return false;
         }
 
-        console.log(`✅ Kullanıcı rolü güncellendi: ${userId} -> ${role}`);
         return true;
     } catch (error) {
         console.error("updateUserRoleAsAdmin hatası:", error);

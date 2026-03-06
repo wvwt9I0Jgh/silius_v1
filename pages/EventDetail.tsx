@@ -64,11 +64,14 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
         ]);
 
         // Canlı check-in sayısını al
-        const { count: checkInCount } = await supabase
+        const { count: checkInCount, error: checkInError } = await supabase
           .from('event_participants')
           .select('*', { count: 'exact', head: true })
           .eq('event_id', id)
           .eq('checked_in', true);
+        if (checkInError) {
+          console.warn('checked_in column may not exist yet');
+        }
 
         // Galeri fotoğraflarını yükle
         const galleryData = await db.getEventGallery(id);
@@ -267,7 +270,7 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
       };
 
       const images: { imageUrl: string }[] = [];
-      for (const file of Array.from(files)) {
+      for (const file of Array.from(files) as File[]) {
         const dataUrl = await readFileAsDataURL(file);
         images.push({ imageUrl: dataUrl });
       }
@@ -406,8 +409,8 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
 
         <div className="absolute bottom-8 md:bottom-16 left-1/2 -translate-x-1/2 w-full max-w-7xl px-6">
           <div className="flex flex-col items-center text-center">
-            <span className="px-4 md:px-5 py-1 md:py-2 bg-rose-500 text-white rounded-2xl text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] mb-4 md:mb-6 shadow-2xl shadow-rose-500/40">
-              {event.category.toUpperCase()}
+            <span className="px-4 md:px-5 py-1 md:py-2 bg-fuchsia-500 text-white rounded-2xl text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] mb-4 md:mb-6 shadow-2xl shadow-fuchsia-500/40">
+              {{ club: 'CLUB', rave: 'RAVE', pub: 'PUB', coffee: 'COFFEE', beach: 'SAHİL PARTİSİ', house: 'EV PARTİSİ', street: 'SOKAK PARTİSİ', other: 'DİĞER' }[event.category] || event.category.toUpperCase()}
             </span>
             <h1 className="text-4xl md:text-8xl font-black font-outfit tracking-tighter mb-4 uppercase leading-none text-white text-glow">
               {event.title}

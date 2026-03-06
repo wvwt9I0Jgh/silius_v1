@@ -27,7 +27,7 @@ create table if not exists public.events (
   date date not null,
   location text not null,
   image text not null,
-  category text not null check (category in ('party', 'social', 'coffee', 'study', 'sport', 'game', 'other')),
+  category text not null check (category in ('club', 'rave', 'beach', 'house', 'street', 'pub', 'coffee', 'other')),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -61,95 +61,109 @@ create table if not exists public.friends (
 -- =============================================
 -- ROW LEVEL SECURITY (RLS) POLİTİKALARI
 -- =============================================
+-- NOT: Tüm policy'ler "varsa atla" mantığıyla çalışır (idempotent)
 
 -- USERS RLS
 alter table public.users enable row level security;
 
-create policy "Users are viewable by everyone"
-  on public.users for select
-  using (true);
+DO $$ BEGIN
+  CREATE POLICY "Users are viewable by everyone" ON public.users FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-create policy "Users can update own profile"
-  on public.users for update
-  using (auth.uid() = id);
+DO $$ BEGIN
+  CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-create policy "Users can insert own profile"
-  on public.users for insert
-  with check (auth.uid() = id);
+DO $$ BEGIN
+  CREATE POLICY "Users can insert own profile" ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- EVENTS RLS
 alter table public.events enable row level security;
 
-create policy "Events are viewable by everyone"
-  on public.events for select
-  using (true);
+DO $$ BEGIN
+  CREATE POLICY "Events are viewable by everyone" ON public.events FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-create policy "Authenticated users can create events"
-  on public.events for insert
-  with check (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Authenticated users can create events" ON public.events FOR INSERT WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-create policy "Users can update own events"
-  on public.events for update
-  using (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Users can update own events" ON public.events FOR UPDATE USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-create policy "Users can delete own events"
-  on public.events for delete
-  using (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Users can delete own events" ON public.events FOR DELETE USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-create policy "Admins can delete any event"
-  on public.events for delete
-  using (
-    exists (
-      select 1 from public.users
-      where users.id = auth.uid()
-      and users.role = 'admin'
-    )
+DO $$ BEGIN
+  CREATE POLICY "Admins can delete any event" ON public.events FOR DELETE USING (
+    exists (select 1 from public.users where users.id = auth.uid() and users.role = 'admin')
   );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- EVENT_PARTICIPANTS RLS
 alter table public.event_participants enable row level security;
 
-create policy "Participants are viewable by everyone"
-  on public.event_participants for select
-  using (true);
+DO $$ BEGIN
+  CREATE POLICY "Participants are viewable by everyone" ON public.event_participants FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-create policy "Authenticated users can join events"
-  on public.event_participants for insert
-  with check (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Authenticated users can join events" ON public.event_participants FOR INSERT WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-create policy "Users can leave events"
-  on public.event_participants for delete
-  using (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Users can leave events" ON public.event_participants FOR DELETE USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- COMMENTS RLS
 alter table public.comments enable row level security;
 
-create policy "Comments are viewable by everyone"
-  on public.comments for select
-  using (true);
+DO $$ BEGIN
+  CREATE POLICY "Comments are viewable by everyone" ON public.comments FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-create policy "Authenticated users can create comments"
-  on public.comments for insert
-  with check (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Authenticated users can create comments" ON public.comments FOR INSERT WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-create policy "Users can delete own comments"
-  on public.comments for delete
-  using (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Users can delete own comments" ON public.comments FOR DELETE USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- FRIENDS RLS
 alter table public.friends enable row level security;
 
-create policy "Friends are viewable by everyone"
-  on public.friends for select
-  using (true);
+DO $$ BEGIN
+  CREATE POLICY "Friends are viewable by everyone" ON public.friends FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-create policy "Authenticated users can add friends"
-  on public.friends for insert
-  with check (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Authenticated users can add friends" ON public.friends FOR INSERT WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-create policy "Users can remove own friendships"
-  on public.friends for delete
-  using (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Users can remove own friendships" ON public.friends FOR DELETE USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- =============================================
 -- İNDEKSLER (Performans için)

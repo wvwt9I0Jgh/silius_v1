@@ -30,7 +30,7 @@ export interface Event {
   latitude?: number;
   longitude?: number;
   image: string;
-  category: 'party' | 'social' | 'coffee' | 'study' | 'sport' | 'game' | 'other';
+  category: 'club' | 'rave' | 'beach' | 'house' | 'street' | 'pub' | 'coffee' | 'other';
   created_at?: string;
   checkin_code?: string;
 }

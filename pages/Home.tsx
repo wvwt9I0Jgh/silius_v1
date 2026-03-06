@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../database';
 import { Event, User } from '../types';
-import { Plus, MapPin, Calendar, Search, Zap, Coffee, Users as UsersIcon, X, TrendingUp, Brain, Trophy, Gamepad2, Sparkles, Image as ImageIcon, Camera, Loader2, ArrowRight } from 'lucide-react';
+import { Plus, MapPin, Calendar, Search, Zap, X, TrendingUp, Sparkles, Image as ImageIcon, Camera, Loader2, ArrowRight, Music, Waves, Home as HomeIcon, Footprints, PartyPopper, Beer, Coffee } from 'lucide-react';
 import LocationPicker from '../components/LocationPicker';
 
 interface HomeProps {
@@ -12,13 +12,14 @@ interface HomeProps {
 type SortOption = 'created_desc' | 'popular' | 'date_desc' | 'date_asc' | 'vibe_score';
 
 const CATEGORIES = [
-  { id: 'all', label: 'HEPSİ', icon: Sparkles },
-  { id: 'party', label: 'ENERJİ', icon: Zap },
-  { id: 'coffee', label: 'HUZUR', icon: Coffee },
-  { id: 'social', label: 'SOSYAL', icon: UsersIcon },
-  { id: 'study', label: 'ODAK', icon: Brain },
-  { id: 'sport', label: 'HAREKET', icon: Trophy },
-  { id: 'game', label: 'OYUN', icon: Gamepad2 },
+  { id: 'all', label: 'HEPSİ', icon: Sparkles, color: 'indigo' },
+  { id: 'club', label: 'CLUB', icon: Music, color: 'fuchsia' },
+  { id: 'rave', label: 'RAVE', icon: Zap, color: 'violet' },
+  { id: 'pub', label: 'PUB', icon: Beer, color: 'amber' },
+  { id: 'coffee', label: 'COFFEE', icon: Coffee, color: 'orange' },
+  { id: 'beach', label: 'SAHİL PARTİSİ', icon: Waves, color: 'cyan' },
+  { id: 'house', label: 'EV PARTİSİ', icon: HomeIcon, color: 'rose' },
+  { id: 'street', label: 'SOKAK PARTİSİ', icon: Footprints, color: 'amber' },
 ];
 
 interface EventWithParticipants extends Event {
@@ -50,7 +51,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
     longitude: undefined as number | undefined,
     date: '',
     image: '',
-    category: 'party' as Event['category']
+    category: 'club' as Event['category']
   });
 
   // Galeri fotoğrafları state
@@ -230,8 +231,13 @@ const Home: React.FC<HomeProps> = ({ user }) => {
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Mekan seçimi kontrolü
-    if (!newEvent.location || !newEvent.latitude || !newEvent.longitude) {
+    // Konum kontrolü - ev/sokak partisinde sadece adres yeterli, diğerlerinde ilçe+mekan gerekli
+    const isManualCategory = newEvent.category === 'house' || newEvent.category === 'street';
+    if (!newEvent.location) {
+      alert(isManualCategory ? 'Lütfen bir adres girin.' : 'Lütfen bir ilçe ve mekan seçin.');
+      return;
+    }
+    if (!isManualCategory && (!newEvent.latitude || !newEvent.longitude)) {
       alert('Lütfen bir ilçe ve mekan seçin.');
       return;
     }
@@ -240,13 +246,14 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
     try {
       const defaultImages: Record<string, string> = {
-        party: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format',
-        coffee: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&auto=format',
-        social: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&auto=format',
-        study: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format',
-        sport: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&auto=format',
-        game: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&auto=format',
-        other: 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=800&auto=format'
+        club: 'https://images.unsplash.com/photo-1571266028243-3716f02d2d2e?w=800&auto=format',
+        rave: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format',
+        pub: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800&auto=format',
+        coffee: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&auto=format',
+        beach: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format',
+        house: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800&auto=format',
+        street: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800&auto=format',
+        other: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format'
       };
 
       const savedEvent = await db.saveEvent({
@@ -278,7 +285,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
         await loadEvents();
         await checkVibeLimit(); // Limiti güncelle
         setShowCreateModal(false);
-        setNewEvent({ title: '', description: '', location: '', latitude: undefined, longitude: undefined, date: '', image: '', category: 'party' });
+        setNewEvent({ title: '', description: '', location: '', latitude: undefined, longitude: undefined, date: '', image: '', category: 'club' });
         setGalleryImages([]);
       } else {
         alert('Etkinlik oluşturulamadı. Lütfen tekrar deneyin.');
@@ -346,11 +353,14 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
   return (
     <div className="min-h-screen w-full relative bg-bg-deep overflow-hidden">
-      {/* Background */}
+      {/* Background - Party/Rave Atmosphere */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[20%] w-[60%] h-[60%] rounded-full bg-indigo-900/20 blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[10%] w-[50%] h-[50%] rounded-full bg-rose-900/10 blur-[100px] animate-pulse delay-1000"></div>
+        <div className="absolute top-[-20%] left-[20%] w-[60%] h-[60%] rounded-full bg-fuchsia-900/20 blur-[120px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[10%] w-[50%] h-[50%] rounded-full bg-cyan-900/10 blur-[100px] animate-pulse delay-1000"></div>
+        <div className="absolute top-[30%] right-[30%] w-[30%] h-[30%] rounded-full bg-violet-900/15 blur-[80px] animate-pulse delay-500"></div>
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+        {/* Scan line effect */}
+        <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(255,255,255,0.01)_2px,rgba(255,255,255,0.01)_4px)]"></div>
       </div>
 
       <div className="w-full max-w-[1920px] mx-auto px-4 md:px-8 py-8 pb-32 relative z-10">
@@ -363,19 +373,19 @@ const Home: React.FC<HomeProps> = ({ user }) => {
               <span className="text-[10px] font-black tracking-[0.3em] text-slate-400 uppercase">Topluluk Akışı</span>
             </div>
             <h1 className="text-5xl md:text-7xl font-black font-outfit text-text-main tracking-tighter leading-[0.9]">
-              VIBE <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-indigo-400">EVRENİ</span>
+              PARTY <span className="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 via-violet-400 to-cyan-400">ZONE</span>
             </h1>
-            <p className="text-slate-500 font-bold mt-4 max-w-md">Hoş geldin, {user.firstName}. Bugün şehrin ritmini yakala ve sana iyi gelen insanlarla buluş.</p>
+            <p className="text-slate-500 font-bold mt-4 max-w-md">Hoş geldin, {user.firstName}. Bugün gecenin ritmini yakala ve parti arkadaşlarını bul.</p>
           </div>
 
           <div className="flex flex-col md:flex-row gap-4 w-full lg:w-auto">
             <div className="relative group md:w-80">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-rose-500 to-indigo-500 rounded-2xl opacity-20 group-hover:opacity-50 blur transition duration-500"></div>
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-fuchsia-500 to-cyan-500 rounded-2xl opacity-20 group-hover:opacity-50 blur transition duration-500"></div>
               <div className="relative flex items-center bg-bg-surface rounded-xl border border-white/10 group-focus-within:border-indigo-500/50 transition-colors">
                 <Search className="ml-4 text-slate-500 group-focus-within:text-white transition-colors" size={20} />
                 <input
                   type="text"
-                  placeholder="Etkinlik veya mekan ara..."
+                  placeholder="Parti veya mekan ara..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-transparent border-none py-4 px-4 text-text-main placeholder:text-text-muted focus:outline-none text-sm font-bold font-outfit tracking-wide"
@@ -390,7 +400,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                 }`}
             >
               <Plus size={18} strokeWidth={3} />
-              <span>YENİ VIBE {vibeLimit.remaining < 3 && `(${vibeLimit.remaining}/3)`}</span>
+              <span>YENİ PARTİ {vibeLimit.remaining < 3 && `(${vibeLimit.remaining}/3)`}</span>
             </button>
           </div>
         </div>
@@ -406,7 +416,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                   key={cat.id}
                   onClick={() => setFilter(cat.id)}
                   className={`px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap border flex items-center gap-2 ${isActive
-                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/30 translate-y-[-2px]'
+                    ? 'bg-fuchsia-600 text-white border-fuchsia-500 shadow-lg shadow-fuchsia-500/30 translate-y-[-2px]'
                     : 'bg-white/5 border-white/5 text-text-muted hover:text-text-main hover:bg-white/10'
                     }`}
                 >
@@ -449,9 +459,9 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                 <Sparkles size={32} />
               </div>
               <h3 className="text-3xl font-black text-text-main font-outfit mb-3 uppercase tracking-tight">FREKANS YOK</h3>
-              <p className="text-slate-500 mb-8 max-w-sm font-medium">Bu kategoride henüz bir vibe yaratılmamış. İlk kıvılcımı sen çak.</p>
-              <button onClick={openCreateModal} className="text-rose-500 font-black uppercase text-xs tracking-widest hover:underline underline-offset-4">
-                + VIBE OLUŞTUR {vibeLimit.remaining < 3 && `(${vibeLimit.remaining}/3)`}
+              <p className="text-slate-500 mb-8 max-w-sm font-medium">Bu kategoride henüz bir parti yaratılmamış. İlk kıvılcımı sen çak.</p>
+              <button onClick={openCreateModal} className="text-fuchsia-500 font-black uppercase text-xs tracking-widest hover:underline underline-offset-4">
+                + PARTİ OLUŞTUR {vibeLimit.remaining < 3 && `(${vibeLimit.remaining}/3)`}
               </button>
             </div>
           ) : (
@@ -462,11 +472,11 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                 <Link
                   key={event.id}
                   to={`/events/${event.id}`}
-                  className="group relative flex flex-col bg-bg-surface border border-white/5 rounded-[2.5rem] overflow-hidden hover:border-indigo-500/30 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/10"
+                  className="group relative flex flex-col bg-bg-surface border border-white/5 rounded-[2.5rem] overflow-hidden hover:border-fuchsia-500/30 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-fuchsia-500/10"
                 >
                   {/* Image Container */}
                   <div className="h-64 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-indigo-900/20 mix-blend-overlay z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                    <div className="absolute inset-0 bg-fuchsia-900/20 mix-blend-overlay z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
                     <img
                       src={event.image}
                       alt={event.title}
@@ -499,7 +509,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
                   {/* Content */}
                   <div className="p-8 pt-2 flex flex-col flex-grow relative z-20">
-                    <h3 className="text-2xl font-black font-outfit text-text-main leading-tight mb-4 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-400 group-hover:to-rose-400 transition-all uppercase tracking-tight">
+                    <h3 className="text-2xl font-black font-outfit text-text-main leading-tight mb-4 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-fuchsia-400 group-hover:to-cyan-400 transition-all uppercase tracking-tight">
                       {event.title}
                     </h3>
 
@@ -621,13 +631,13 @@ const Home: React.FC<HomeProps> = ({ user }) => {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Glows */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[80px] pointer-events-none"></div>
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-rose-500/10 blur-[80px] pointer-events-none"></div>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-fuchsia-500/10 blur-[80px] pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-500/10 blur-[80px] pointer-events-none"></div>
 
               <div className="relative z-10">
                 <div className="flex justify-between items-start mb-10">
                   <h2 className="text-3xl md:text-4xl font-black font-outfit tracking-tighter uppercase italic text-text-main">
-                    YENİ <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-indigo-400">VIBE</span> YARAT
+                    YENİ <span className="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-cyan-400">PARTİ</span> YARAT
                   </h2>
                   <button onClick={() => setShowCreateModal(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white transition-all">
                     <X size={20} />
@@ -721,14 +731,15 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Kategori</label>
                       <div className="relative">
                         <select value={newEvent.category} onChange={e => setNewEvent({ ...newEvent, category: e.target.value as any })}
-                          className="w-full bg-bg-deep/50 border border-white/10 rounded-2xl px-6 py-4 text-text-main appearance-none cursor-pointer focus:outline-none focus:border-rose-500/50 transition-all text-sm font-bold"
+                          className="w-full bg-bg-deep/50 border border-white/10 rounded-2xl px-6 py-4 text-text-main appearance-none cursor-pointer focus:outline-none focus:border-fuchsia-500/50 transition-all text-sm font-bold"
                         >
-                          <option value="party" className="bg-slate-900">⚡ Enerji</option>
-                          <option value="coffee" className="bg-slate-900">☕ Huzur</option>
-                          <option value="social" className="bg-slate-900">🤝 Sosyal</option>
-                          <option value="study" className="bg-slate-900">🧠 Odak</option>
-                          <option value="sport" className="bg-slate-900">🏆 Hareket</option>
-                          <option value="game" className="bg-slate-900">🎮 Oyun</option>
+                          <option value="club" className="bg-slate-900">🎵 Club</option>
+                          <option value="rave" className="bg-slate-900">⚡ Rave</option>
+                          <option value="pub" className="bg-slate-900">🍺 Pub</option>
+                          <option value="coffee" className="bg-slate-900">☕ Coffee</option>
+                          <option value="beach" className="bg-slate-900">🏖️ Sahil Partisi</option>
+                          <option value="house" className="bg-slate-900">🏠 Ev Partisi</option>
+                          <option value="street" className="bg-slate-900">🎉 Sokak Partisi</option>
                         </select>
                         <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
                           <ArrowRight size={14} className="text-slate-500 rotate-90" />
@@ -761,6 +772,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                     longitude={newEvent.longitude}
                     onCoordinatesChange={(lat, lng, mapAddress) => setNewEvent(prev => ({ ...prev, latitude: lat, longitude: lng, location: mapAddress || prev.location }))}
                     addressRequired={true}
+                    partyCategory={newEvent.category}
                   />
 
                   <div className="space-y-2">
@@ -775,7 +787,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                     <button type="button" onClick={() => setShowCreateModal(false)} className="px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest text-slate-500 hover:text-white hover:bg-white/5 transition-all">
                       İPTAL
                     </button>
-                    <button type="submit" disabled={isCreating} className="flex-1 bg-gradient-to-r from-rose-600 to-rose-500 hover:to-rose-400 text-white rounded-2xl py-4 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-rose-500/20 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                    <button type="submit" disabled={isCreating} className="flex-1 bg-gradient-to-r from-fuchsia-600 to-violet-500 hover:to-fuchsia-400 text-white rounded-2xl py-4 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-fuchsia-500/20 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
                       {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'YAYINLA'}
                     </button>
                   </div>

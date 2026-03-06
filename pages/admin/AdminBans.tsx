@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../database';
 import {
@@ -12,8 +12,10 @@ interface BannedUser {
     user_id: string;
     reason: string;
     banned_by: string;
-    created_at: string;
-    users?: {
+    banned_at: string;
+    created_at?: string;
+    user?: {
+        id: string;
         username: string;
         email: string;
         avatar: string;
@@ -64,8 +66,7 @@ const AdminBans: React.FC = () => {
     };
 
     if (!isAdmin && !hasSecretAdminAuth) {
-        navigate('/');
-        return null;
+        return <Navigate to="/" replace />;
     }
 
     const handleUnbanUser = async (userId: string) => {
@@ -166,13 +167,13 @@ const AdminBans: React.FC = () => {
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-3">
                                                         <img
-                                                            src={ban.users?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${ban.user_id}`}
+                                                            src={ban.user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${ban.user_id}`}
                                                             alt="User"
                                                             className="w-10 h-10 rounded-xl object-cover"
                                                         />
                                                         <div>
-                                                            <p className="font-bold">{ban.users?.firstName} {ban.users?.lastName}</p>
-                                                            <p className="text-xs opacity-60">@{ban.users?.username}</p>
+                                                            <p className="font-bold">{ban.user?.firstName} {ban.user?.lastName}</p>
+                                                            <p className="text-xs opacity-60">@{ban.user?.username}</p>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -182,7 +183,7 @@ const AdminBans: React.FC = () => {
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-2 text-xs opacity-60">
                                                         <Calendar size={12} />
-                                                        {new Date(ban.created_at).toLocaleDateString('tr-TR')}
+                                                        {new Date(ban.banned_at || ban.created_at || '').toLocaleDateString('tr-TR')}
                                                     </div>
                                                 </td>
                                                 <td className="p-4">

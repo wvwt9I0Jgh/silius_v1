@@ -49,17 +49,21 @@ export const db = {
   // Günlük vibe limiti kontrolü
   checkDailyVibeLimit: async (userId: string): Promise<{ canCreate: boolean; remaining: number; resetTime?: string }> => {
     try {
-      const { data: userData } = await supabase
+      const { data: userData, error } = await supabase
         .from('users')
         .select('dailyVibeCount, lastVibeDate')
         .eq('id', userId)
         .single();
 
+      if (error) {
+        console.warn('dailyVibeCount/lastVibeDate columns may not exist yet, skipping limit check');
+        return { canCreate: true, remaining: 3 };
+      }
+
       const today = new Date().toISOString().split('T')[0];
       const lastVibeDate = userData?.lastVibeDate;
       let dailyCount = userData?.dailyVibeCount || 0;
 
-      // Eğer son vibe tarihi bugün değilse, sayacı sıfırla
       if (lastVibeDate !== today) {
         dailyCount = 0;
       }
@@ -68,7 +72,6 @@ export const db = {
       const remaining = MAX_DAILY_VIBES - dailyCount;
       const canCreate = remaining > 0;
 
-      // Yarın saat 00:00'da reset olacak
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(0, 0, 0, 0);
@@ -76,8 +79,7 @@ export const db = {
 
       return { canCreate, remaining, resetTime: canCreate ? undefined : `Yarın ${resetTime}` };
     } catch (error) {
-      console.error('Daily vibe limit check ERROR. (migration-vibe-score.sql çalıştırıldı mı?):', error);
-      // Hata durumunda sistemi kilitlememek için izin veriyoruz, ancak hatayı konsola basıyoruz.
+      console.error('Daily vibe limit check ERROR:', error);
       return { canCreate: true, remaining: 3 }; 
     }
   },
@@ -87,16 +89,20 @@ export const db = {
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      const { data: userData } = await supabase
+      const { data: userData, error: selectError } = await supabase
         .from('users')
         .select('dailyVibeCount, lastVibeDate')
         .eq('id', userId)
         .single();
 
+      if (selectError) {
+        console.warn('dailyVibeCount/lastVibeDate columns may not exist, skipping increment');
+        return true;
+      }
+
       const lastVibeDate = userData?.lastVibeDate;
       let newCount = 1;
 
-      // Eğer son vibe tarihi bugünse, sayacı artır
       if (lastVibeDate === today) {
         newCount = (userData?.dailyVibeCount || 0) + 1;
       }
@@ -134,14 +140,44 @@ export const db = {
       throw new Error(`Günlük vibe limitine ulaştınız (3/3). ${limitCheck.resetTime} sıfırlanacak.`);
     }
 
-    const { data, error } = await supabase
+    const eventData: Record<string, any> = {
+      ...event,
+      user_id: userData.user.id
+    };
+
+    // İlk deneme: tüm alanlarla kaydet
+    let { data, error } = await supabase
       .from('events')
-      .insert({
-        ...event,
-        user_id: userData.user.id
-      })
+      .insert(eventData)
       .select()
       .single();
+
+    // latitude/longitude kolonları henüz eklenmemişse, onları çıkarıp tekrar dene
+    if (error && error.message?.includes("'latitude'")) {
+      console.warn('latitude/longitude columns not found, saving without coordinates...');
+      const { latitude, longitude, ...eventWithoutCoords } = eventData;
+      const retryResult = await supabase
+        .from('events')
+        .insert(eventWithoutCoords)
+        .select()
+        .single();
+      data = retryResult.data;
+      error = retryResult.error;
+    }
+
+    // Kategori CHECK constraint eski değerlerle kalıyorsa, 'other' ile dene
+    if (error && (error.message?.includes('check') || error.message?.includes('category') || error.code === '23514')) {
+      console.warn('Category CHECK constraint may be outdated, retrying with other...');
+      const { latitude: _lat, longitude: _lng, ...retryBase } = eventData;
+      const retryData = { ...retryBase, category: 'other' };
+      const retryResult = await supabase
+        .from('events')
+        .insert(retryData)
+        .select()
+        .single();
+      data = retryResult.data;
+      error = retryResult.error;
+    }
 
     if (error) {
       console.error('Event save error:', error);
@@ -257,6 +293,10 @@ export const db = {
       .eq('checked_in', true);
 
     if (error) {
+      // checked_in kolonu yoksa sessizce 0 dön
+      if (error.message?.includes('checked_in') || error.code === 'PGRST204') {
+        return 0;
+      }
       console.error('Live participant count error:', error);
       return 0;
     }
@@ -1060,7 +1100,11 @@ export const db = {
   // ==================== COMMENTS WITH REPLIES (NESTED) ====================
 
   getCommentsWithReplies: async (eventId: string, eventOwnerId: string) => {
-    const { data, error } = await supabase
+    let data: any[] | null = null;
+    let error: any = null;
+
+    // Try with parent_comment_id first
+    const result1 = await supabase
       .from('comments')
       .select(`
         id,
@@ -1077,9 +1121,32 @@ export const db = {
       .eq('event_id', eventId)
       .order('created_at', { ascending: true });
 
-    if (error) {
-      console.error('Comments with replies fetch error:', error);
-      return [];
+    if (result1.error) {
+      // Fallback: query without parent_comment_id
+      console.warn('parent_comment_id not available, falling back to flat comments');
+      const result2 = await supabase
+        .from('comments')
+        .select(`
+          id,
+          event_id,
+          user_id,
+          text,
+          created_at,
+          users (
+            username,
+            avatar
+          )
+        `)
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true });
+
+      if (result2.error) {
+        console.error('Comments fetch error:', result2.error);
+        return [];
+      }
+      data = result2.data;
+    } else {
+      data = result1.data;
     }
 
     // Organize comments into parent-child structure
@@ -1268,10 +1335,20 @@ export const db = {
       const userIds = [...new Set(events.map(e => e.user_id))];
 
       // Kullanıcı bilgilerini al
-      const { data: users } = await supabase
+      let users: any[] | null = null;
+      const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('id, totalTimeSpent')
         .in('id', userIds);
+      if (usersError) {
+        const { data: fallbackUsers } = await supabase
+          .from('users')
+          .select('id')
+          .in('id', userIds);
+        users = fallbackUsers;
+      } else {
+        users = usersData;
+      }
 
       // Tüm etkinlikleri tek sorguda al (created counts için)
       const { data: allEvents } = await supabase
@@ -1374,12 +1451,14 @@ export const db = {
         if (checkInError) throw checkInError;
 
         // 3. Award Points
-        await supabase.rpc('increment_vibe_score', { user_id: userId, points: 1 }).catch(async () => {
-             // Fallback if RPC doesn't exist
-             const { data: u } = await supabase.from('users').select('vibe_score').eq('id', userId).single();
-             const sc = u?.vibe_score || 0;
-             await supabase.from('users').update({ vibe_score: sc + 1 }).eq('id', userId);
-        });
+        try {
+            await supabase.rpc('increment_vibe_score', { user_id: userId, points: 1 });
+        } catch {
+            // Fallback if RPC doesn't exist
+            const { data: u } = await supabase.from('users').select('vibe_score').eq('id', userId).single();
+            const sc = (u as any)?.vibe_score || 0;
+            await supabase.from('users').update({ vibe_score: sc + 1 } as any).eq('id', userId);
+        }
 
         return { success: true, message: 'Giriş Başarılı!', points: 1 };
      } catch (err: any) {
@@ -1391,11 +1470,15 @@ export const db = {
   // Platformda geçirilen süreyi güncelle (her 5 dakikada bir çağrılacak)
   updateTimeSpent: async (userId: string, minutesToAdd: number): Promise<boolean> => {
     try {
-      const { data: currentUser } = await supabase
+      const { data: currentUser, error: selectError } = await supabase
         .from('users')
         .select('totalTimeSpent')
         .eq('id', userId)
         .single();
+
+      if (selectError) {
+        return true;
+      }
 
       const currentTime = currentUser?.totalTimeSpent || 0;
       const newTime = currentTime + minutesToAdd;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../database';
 import { CMSPage } from '../../types';
@@ -37,8 +37,7 @@ const AdminPages: React.FC = () => {
     };
 
     if (!isAdmin && !hasSecretAdminAuth) {
-        navigate('/');
-        return null;
+        return <Navigate to="/" replace />;
     }
 
     const handleCreatePage = async () => {

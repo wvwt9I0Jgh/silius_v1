@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../database';
 import { CMSPage, CMSModule, CMSModuleType, CMSModuleStyles } from '../../types';
@@ -136,8 +136,7 @@ const PageEditor: React.FC = () => {
     };
 
     if (!isAdmin && !hasSecretAdminAuth) {
-        navigate('/');
-        return null;
+        return <Navigate to="/" replace />;
     }
 
     const handleAddModule = async (type: CMSModuleType) => {

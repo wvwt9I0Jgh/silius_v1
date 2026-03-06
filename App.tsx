@@ -15,6 +15,7 @@ import About from './pages/About';
 import Security from './pages/Security';
 import Guidelines from './pages/Guidelines';
 import Contact from './pages/Contact';
+import HowToUse from './pages/HowToUse';
 import Vibeler from './pages/Vibeler';
 import Topluluk from './pages/Topluluk';
 import Mekanlar from './pages/Mekanlar';
@@ -204,6 +205,7 @@ const AppContent: React.FC = () => {
           <Route path="/security" element={<Security />} />
           <Route path="/guidelines" element={<Guidelines />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/nasil-kullanilir" element={<HowToUse />} />
           <Route path="/vibeler" element={<Vibeler />} />
           <Route path="/topluluk" element={<Topluluk />} />
           <Route path="/mekanlar" element={<Mekanlar />} />

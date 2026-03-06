@@ -131,7 +131,7 @@ const CheckInPage: React.FC = () => {
             <div className="relative z-10 space-y-1">
               <h3 className="text-xs font-bold tracking-[0.2em] text-purple-300 uppercase">Silius Ticket</h3>
               <h1 className="text-3xl md:text-5xl font-black font-outfit uppercase leading-none">{event.title}</h1>
-              <p className="text-indigo-200 uppercase tracking-widest text-xs font-bold">{event.category} Event</p>
+              <p className="text-fuchsia-200 uppercase tracking-widest text-xs font-bold">{{ club: 'Club Night', rave: 'Rave', pub: 'Pub Night', coffee: 'Coffee Meet', beach: 'Sahil Partisi', house: 'Ev Partisi', street: 'Sokak Partisi', other: 'Etkinlik' }[event.category] || event.category}</p>
             </div>
 
             {/* Canlı katılımcı sayısı */}

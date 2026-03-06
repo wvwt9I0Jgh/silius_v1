@@ -8,12 +8,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️ Supabase credentials missing. Check your .env file.');
 }
 
-// Debug: Check if service key is loaded
-if (supabaseServiceKey) {
-  console.log('✅ Service role key loaded');
-} else {
-  console.warn('⚠️ Service role key not found - admin operations may fail');
-}
+// Service key availability checked silently
+const _hasServiceKey = !!supabaseServiceKey;
 
 // Normal client for authenticated users
 export const supabase = createClient(

@@ -205,9 +205,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (user?.id) {
       const updateActivity = async () => {
         try {
-          await supabase.from('users').update({
+          const { error } = await supabase.from('users').update({
             lastActiveAt: new Date().toISOString()
           }).eq('id', user.id);
+          if (error) {
+            // lastActiveAt kolonu henüz eklenmemiş olabilir, sessizce geç
+          }
         } catch (e) {
           // ignore error
         }

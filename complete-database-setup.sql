@@ -48,7 +48,7 @@ CREATE TABLE public.events (
   date date NOT NULL,
   location text NOT NULL,
   image text NOT NULL,
-  category text NOT NULL CHECK (category IN ('party', 'social', 'coffee', 'study', 'sport', 'game', 'other')),
+  category text NOT NULL CHECK (category IN ('club', 'rave', 'beach', 'house', 'street', 'pub', 'coffee', 'other')),
   created_at timestamp with time zone DEFAULT now()
 );
 

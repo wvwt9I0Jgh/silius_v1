@@ -43,8 +43,8 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({ isOpen,
 
         const age = calculateAge(birthdate);
         
-        if (age < 13) {
-            setError('Platformu kullanmak için en az 13 yaşında olmalısınız');
+        if (age < 18) {
+            setError('Platformu kullanmak için en az 18 yaşında olmalısınız');
             return;
         }
 
@@ -57,12 +57,11 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({ isOpen,
         setError('');
 
         try {
-            await db.updateUserProfile(user?.id!, {
+            await db.updateUser(user?.id!, {
                 gender,
-                birthdate,
                 age,
-                profile_completed: true
-            });
+                isProfileComplete: true
+            } as any);
             
             await refreshProfile?.();
             onComplete();

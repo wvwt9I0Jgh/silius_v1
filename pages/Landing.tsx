@@ -4,8 +4,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Sparkles, ArrowRight, Star, Zap, Shield, Heart, Users,
-  MapPin, Globe, Moon, Sun, X, Calendar, Music, Coffee, ChevronRight, BookOpen, Compass, Smile
+  Sparkles, ArrowRight, Zap, Shield, MapPin, Globe, Sun, Moon, X, ChevronRight, Plus, ScanLine, Ticket, Volume2, Fingerprint, Users
 } from 'lucide-react';
 
 const Landing: React.FC = () => {
@@ -13,7 +12,6 @@ const Landing: React.FC = () => {
   const { user } = useAuth();
   const [scrollY, setScrollY] = useState(0);
   const { isDarkMode, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState('connect');
 
   // Admin logic
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -42,17 +40,10 @@ const Landing: React.FC = () => {
         let eventCount = 0;
         let participantCount = 0;
 
-        if (usersRes.status === 'fulfilled' && usersRes.value.count !== null) {
-          userCount = usersRes.value.count;
-        }
-        if (eventsRes.status === 'fulfilled' && eventsRes.value.count !== null) {
-          eventCount = eventsRes.value.count;
-        }
-        if (participantsRes.status === 'fulfilled' && participantsRes.value.count !== null) {
-          participantCount = participantsRes.value.count;
-        }
+        if (usersRes.status === 'fulfilled' && usersRes.value.count !== null) userCount = usersRes.value.count;
+        if (eventsRes.status === 'fulfilled' && eventsRes.value.count !== null) eventCount = eventsRes.value.count;
+        if (participantsRes.status === 'fulfilled' && participantsRes.value.count !== null) participantCount = participantsRes.value.count;
 
-        // Toplam vibe puanı = etkinlik sayısı * 10 + katılım sayısı * 5
         const totalVibeScore = (eventCount * 10) + (participantCount * 5);
 
         const formatNumber = (num: number) => {
@@ -62,12 +53,11 @@ const Landing: React.FC = () => {
         };
 
         setStats({
-          users: formatNumber(userCount),
-          events: formatNumber(eventCount),
-          vibeScore: formatNumber(totalVibeScore)
+          users: formatNumber(userCount ?? 0),
+          events: formatNumber(eventCount ?? 0),
+          vibeScore: formatNumber(totalVibeScore ?? 0)
         });
       } catch (err) {
-        console.warn('Stats yüklenemedi:', err);
         setStats({ users: '0', events: '0', vibeScore: '0' });
       }
     };
@@ -77,11 +67,8 @@ const Landing: React.FC = () => {
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll);
-
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-
 
   const handleLogoClick = () => {
     const newCount = clickCount + 1;
@@ -96,9 +83,11 @@ const Landing: React.FC = () => {
   const handleAdminLogin = () => {
     setLoadingAdmin(true);
     setTimeout(() => {
-      if (adminPassword === 'Allah4848') {
+      if (adminPassword === 'Allah48') {
         localStorage.setItem('silius_admin_auth', 'true');
         setShowAdminModal(false);
+        setAdminPassword('');
+        setAuthError('');
         navigate('/admin');
       } else {
         setAuthError('Hatalı şifre');
@@ -107,337 +96,368 @@ const Landing: React.FC = () => {
     }, 800);
   };
 
-  const features = {
-    connect: {
-      title: "Gerçek Bağlar Kur",
-      desc: "Algoritmalar değil, ortak ilgi alanları sizi bir araya getirir.",
-      icon: Users,
-      color: "from-indigo-500 to-blue-500",
-      stats: "15k+ Kullanıcı"
-    },
-    discover: {
-      title: "Şehri Keşfet",
-      desc: "Gizli mekanlar, pop-up etkinlikler ve yerel topluluklar.",
-      icon: MapPin,
-      color: "from-rose-500 to-orange-500",
-      stats: "120+ Mekan"
-    },
-    vibe: {
-      title: "Vibele",
-      desc: "Ruh haline uygun müzik, ortam ve insanları bul.",
-      icon: Zap,
-      color: "from-purple-500 to-pink-500",
-      stats: "Sınırsız Vibe"
-    }
-  };
-
   return (
-    <div className="relative min-h-screen font-sans overflow-x-hidden transition-colors duration-500 bg-bg-deep text-text-main">
+    <div className="relative min-h-screen font-sans overflow-x-hidden bg-[#03000a] text-white selection:bg-fuchsia-500 selection:text-white">
 
-      {/* Dynamic Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className={`absolute -top-32 -left-32 w-96 h-96 rounded-full blur-[120px] mix-blend-screen opacity-40 animate-pulse ${isDarkMode ? 'bg-indigo-600' : 'bg-indigo-400'}`} />
-        <div className={`absolute top-1/2 -right-32 w-[500px] h-[500px] rounded-full blur-[140px] mix-blend-screen opacity-30 animate-blob ${isDarkMode ? 'bg-rose-600' : 'bg-rose-400'}`} />
-        <div className={`absolute -bottom-32 left-1/3 w-96 h-96 rounded-full blur-[120px] mix-blend-screen opacity-40 animate-pulse delay-1000 ${isDarkMode ? 'bg-purple-600' : 'bg-purple-400'}`} />
-
-        {/* Grid Pattern */}
-        <div className={`absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20`} />
-        <div className={`absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]`} />
-      </div>
+      {/* Extreme Gritty Noise Overlay */}
+      <div className="fixed inset-0 opacity-[0.05] pointer-events-none mix-blend-screen z-[100]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")' }} />
+      
+      {/* Background Grid Pattern */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-10" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
       {/* Admin Modal */}
       {showAdminModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowAdminModal(false)} />
-          <div className="relative w-full max-w-sm rounded-3xl p-8 border shadow-2xl overflow-hidden bg-bg-surface border-white/10">
-            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-rose-500" />
-            <button onClick={() => setShowAdminModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-current"><X size={20} /></button>
-
-            <div className="text-center mb-8 mt-2">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-rose-500 to-orange-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-rose-500/20">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={() => setShowAdminModal(false)} />
+          <div className="relative w-full max-w-sm rounded-[2rem] p-8 border shadow-[0_0_50px_rgba(217,70,239,0.3)] bg-[#0a0514] border-fuchsia-500/30">
+            <button onClick={() => setShowAdminModal(false)} className="absolute top-6 right-6 text-white/50 hover:text-white"><X size={24} /></button>
+            <div className="text-left mb-8">
+              <div className="w-12 h-12 bg-fuchsia-500 rounded-lg flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(217,70,239,0.5)]">
                 <Shield className="text-white" size={24} />
               </div>
-              <h3 className="font-outfit text-xl font-bold">Yönetici Girişi</h3>
+              <h3 className="font-outfit text-2xl font-black uppercase tracking-widest text-white">Yönetici</h3>
+              <p className="text-white/50 text-sm mt-1">Sistem erişimi gerekiyor.</p>
             </div>
-
             <div className="space-y-4">
-              <input
-                type="password"
-                value={adminPassword}
-                onChange={e => setAdminPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAdminLogin()}
-                placeholder="Erişim Şifresi"
-                className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-rose-500/50 transition-all bg-bg-deep/50 border-white/10 text-text-main placeholder:text-text-muted"
-                autoFocus
-              />
-              {authError && <p className="text-rose-500 text-xs font-semibold text-center">{authError}</p>}
-              <button
-                onClick={handleAdminLogin}
-                disabled={loadingAdmin}
-                className="w-full py-3 bg-bg-deep text-text-main rounded-xl font-bold hover:bg-bg-surface transition-colors disabled:opacity-50"
-              >
-                {loadingAdmin ? 'Doğrulanıyor...' : 'Giriş Yap'}
+              <input type="password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdminLogin()} placeholder="Erişim Kodu" className="w-full px-5 py-4 bg-black border border-white/10 rounded-xl outline-none focus:border-fuchsia-500 text-white placeholder:text-white/30 font-mono transition-colors tracking-widest" autoFocus />
+              {authError && <p className="text-fuchsia-500 text-xs font-bold uppercase tracking-widest">{authError}</p>}
+              <button onClick={handleAdminLogin} disabled={loadingAdmin} className="w-full py-4 bg-white text-black font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-fuchsia-400 transition-colors">
+                {loadingAdmin ? 'ONAYLANIYOR...' : 'SİSTEME GİR'} <ArrowRight size={18} />
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Navbar */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrollY > 20 ? 'py-4 bg-slate-950/50 backdrop-blur-xl border-b border-white/5' : 'py-6 bg-transparent'}`}>
-        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-          <button onClick={handleLogoClick} className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-rose-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-              <Sparkles size={16} className="text-white" fill="white" />
+      {/* Cyber-Navbar */}
+      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrollY > 20 ? 'py-4 bg-[#03000a]/80 backdrop-blur-2xl border-b border-white/5' : 'py-6 bg-transparent'}`}>
+        <div className="max-w-[1400px] mx-auto px-6 flex justify-between items-center">
+          <button onClick={handleLogoClick} className="flex items-center gap-3 group relative">
+            <div className="absolute inset-0 bg-fuchsia-500 rounded-full blur-md opacity-0 group-hover:opacity-60 transition-opacity" />
+            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center relative z-10">
+              <ScanLine size={20} className="text-black" />
             </div>
-            <span className="text-xl font-black font-outfit tracking-tight text-text-main">Silius</span>
+            <span className="text-2xl font-black font-outfit uppercase tracking-tighter text-white">Silius</span>
           </button>
 
-          <div className="hidden md:flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/5 backdrop-blur-md">
+          <div className="hidden md:flex items-center gap-6 border border-white/10 bg-white/5 px-6 py-2.5 rounded-full backdrop-blur-md">
             {[
-              { name: 'Keşfet', path: '/vibeler' },
+              { name: 'Nasıl Kullanılır?', path: '/nasil-kullanilir' },
+              { name: 'Radar', path: '/vibeler' },
               { name: 'Topluluk', path: '/topluluk' },
               { name: 'Mekanlar', path: '/mekanlar' },
             ].map(link => (
-              <Link key={link.name} to={link.path} className="px-5 py-2 rounded-full text-sm font-semibold transition-all text-text-muted hover:text-text-main hover:bg-white/10">
+              <Link key={link.name} to={link.path} className="text-[11px] font-bold tracking-[0.2em] text-white/50 hover:text-white uppercase transition-colors">
                 {link.name}
               </Link>
             ))}
           </div>
 
           <div className="flex items-center gap-4">
-            <button onClick={toggleTheme} className="p-2.5 rounded-full transition-colors bg-white/5 hover:bg-white/10 text-indigo-500 dark:text-amber-300">
+            <button onClick={toggleTheme} className="hidden md:flex p-3 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-colors">
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            {user ? (
-              <Link to="/home" className="px-6 py-2.5 bg-white text-slate-900 rounded-full font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-white/10 flex items-center gap-2">
-                Uygulamaya Git <ArrowRight size={16} />
-              </Link>
-            ) : (
-              <Link to="/auth" className="px-6 py-2.5 bg-white text-slate-900 rounded-full font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-white/10 flex items-center gap-2">
-                Giriş Yap <ArrowRight size={16} />
-              </Link>
-            )}
+            <Link to={user ? "/home" : "/auth"} className="relative group px-6 py-3 overflow-hidden rounded-full border border-fuchsia-500/50 bg-fuchsia-500/10 text-fuchsia-400 text-[11px] font-bold uppercase tracking-[0.2em] hover:text-white transition-colors flex items-center gap-2">
+              <span className="absolute inset-0 bg-fuchsia-500 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+              <span className="relative z-10">{user ? 'RADARA DÖN' : 'Kayıt / Giriş'}</span>
+            </Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <header className="relative pt-40 pb-20 px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-
-          <div className="space-y-8 relative z-10">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 text-sm font-bold animate-fade-in-up">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-              </span>
-              Beta v2.4 Yayında
-            </div>
-
-            <h1 className="text-6xl md:text-8xl font-black font-outfit leading-[0.95] tracking-tight">
-              <span className="block text-slate-400/50">YENİ NESİL</span>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-rose-500 animate-gradient-x">SOSYALİK</span>
-            </h1>
-
-            <p className="text-xl md:text-2xl font-medium leading-relaxed max-w-lg text-text-muted">
-              Silius, seni algoritmalarla değil, <span className="text-indigo-500">gerçek hislerle</span> eşleştirir. Şehrin ritmini yakala, kabileni bul.
-            </p>
-
-            <div className="flex flex-wrap gap-4 pt-4">
-              {user ? (
-                <Link to="/home" className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold flex items-center gap-3 transition-all hover:-translate-y-1 shadow-xl shadow-indigo-600/30">
-                  Uygulamaya Git <Zap className="fill-current" size={18} />
+      {/* Cyber-Rave Hero */}
+      <header className="relative min-h-screen flex items-center justify-center pt-24 pb-20 overflow-hidden bg-[#03000a]">
+        {/* Abstract light pools */}
+        <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-fuchsia-600/20 rounded-full blur-[150px] mix-blend-screen animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-cyan-600/20 rounded-full blur-[120px] mix-blend-screen animate-pulse" style={{ animationDelay: "1s" }} />
+        
+        <div className="max-w-[1400px] w-full mx-auto px-6 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center">
+           <div className="flex flex-col items-start gap-8 z-20">
+              <div className="inline-flex items-center gap-3 px-4 py-2 border border-fuchsia-500/30 bg-fuchsia-500/10 backdrop-blur-md rounded-full text-xs font-bold text-fuchsia-400 tracking-[0.2em] uppercase origin-left animate-[scaleIn_0.5s_ease-out]">
+                <span className="w-2 h-2 rounded-full bg-fuchsia-500" style={{ boxShadow: '0 0 10px #d946ef' }} />
+                Silius Club Access // Beta
+              </div>
+              
+              <h1 className="text-[4.5rem] sm:text-[6rem] md:text-[8rem] lg:text-[9rem] font-black font-outfit uppercase leading-[0.85] tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-white/90 to-white/10 drop-shadow-[0_0_30px_rgba(255,255,255,0.15)] relative">
+                <span className="block hover:translate-x-2 transition-transform duration-500 cursor-default">GECEYİ</span>
+                <span className="block text-fuchsia-500 drop-shadow-[0_0_40px_rgba(217,70,239,0.4)] hover:translate-x-4 transition-transform duration-500 cursor-default">YAŞA.</span>
+              </h1>
+              
+              <p className="max-w-md text-lg md:text-xl text-white/60 font-light leading-relaxed border-l-2 border-cyan-500 pl-6">
+                Şehrin yeraltı ritmine katıl. Gizli mekanlar, özel partiler ve seninle aynı frekansta olan insanlar. Algoritmalara değil, <span className="text-cyan-400 font-bold drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]">bass'a güven.</span>
+              </p>
+              
+              <div className="flex flex-wrap gap-4 pt-4 w-full sm:w-auto">
+                <Link to={user ? "/home" : "/auth"} className="relative group overflow-hidden bg-white text-black px-8 py-5 flex items-center justify-center gap-4 font-black tracking-widest uppercase transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_50px_rgba(255,255,255,0.5)] flex-1 sm:flex-none">
+                   <div className="absolute inset-0 bg-fuchsia-400 -translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                   <Ticket size={24} className="relative z-10 group-hover:-rotate-12 transition-transform" />
+                   <span className="relative z-10">Listeye Gir</span>
                 </Link>
-              ) : (
-                <Link to="/auth" className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold flex items-center gap-3 transition-all hover:-translate-y-1 shadow-xl shadow-indigo-600/30">
-                  Hemen Katıl <Zap className="fill-current" size={18} />
-                </Link>
-              )}
-              <button className="px-8 py-4 rounded-2xl font-bold border flex items-center gap-3 transition-all hover:-translate-y-1 border-white/10 hover:bg-white/5 bg-white/5">
-                Nasıl Çalışır?
-              </button>
-            </div>
-
-            <div className="flex items-center gap-4 pt-8 opacity-70">
-              <div className="flex -space-x-3">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="w-10 h-10 rounded-full border-2 border-bg-deep overflow-hidden">
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i * 123}`} alt="User" />
-                  </div>
-                ))}
-                <div className="w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold border-bg-deep bg-bg-surface">+2k</div>
+                <a href="#discover" className="px-8 py-5 border border-white/20 hover:border-white/50 text-white font-bold tracking-widest uppercase transition-all backdrop-blur-sm bg-white/5 flex items-center justify-center gap-3 flex-1 sm:flex-none">
+                  <Volume2 size={24} /> Ses Aç
+                </a>
               </div>
-              <div className="text-sm font-medium">Bu hafta <span className="text-rose-500 font-bold">1,240</span> kişi katıldı</div>
-            </div>
-          </div>
-
-          <div className="relative h-[600px] hidden lg:block perspective-1000">
-            {/* 3D Floating Cards Effect */}
-            <div className="absolute top-10 right-10 w-80 h-[450px] bg-slate-900 rounded-[2rem] border border-white/10 shadow-2xl transform rotate-y-12 rotate-z-6 animate-float z-10 overflow-hidden">
-              <img src="https://images.unsplash.com/photo-1545128485-c400e7702796?w=600&fit=crop" className="w-full h-2/3 object-cover" />
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-1 rounded-lg">NEON</span>
-                  <Star className="text-yellow-400 fill-current" size={16} />
-                </div>
-                <h3 className="text-white font-bold text-xl font-outfit">Gece Sürüşü</h3>
-                <div className="flex items-center gap-2 mt-2 text-slate-400 text-sm">
-                  <MapPin size={14} /> Beşiktaş Sahil
-                </div>
+           </div>
+           
+           <div className="relative h-[500px] lg:h-[700px] w-full mt-10 lg:mt-0 perspective-1000">
+              {/* Chaotic Brutalist Collage */}
+              <div className="absolute top-0 right-0 w-[85%] h-[75%] bg-slate-900 border border-white/10 overflow-hidden transform rotate-y-[10deg] rotate-z-[4deg] shadow-[0_30px_60px_rgba(0,0,0,0.8)] animate-float z-10">
+                <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1000&q=80" className="w-full h-full object-cover mix-blend-luminosity opacity-70 filter contrast-125 hover:scale-110 hover:opacity-100 transition-all duration-1000" alt="Rave" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-fuchsia-600/50 mix-blend-overlay pointer-events-none" />
+                <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md px-3 py-1 font-mono text-[10px] text-fuchsia-400 border border-fuchsia-500/30">REC // 04:23 AM</div>
               </div>
-            </div>
-
-            <div className="absolute top-32 left-0 w-72 h-[400px] bg-white rounded-[2rem] shadow-2xl transform -rotate-y-12 -rotate-z-3 animate-float animation-delay-2000 z-20 overflow-hidden border border-slate-100">
-              <img src="https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=600&fit=crop" className="w-full h-2/3 object-cover" />
-              <div className="p-6">
-                <h3 className="text-slate-900 font-bold text-xl font-outfit">Haftasonu Koşusu</h3>
-                <div className="flex -space-x-2 mt-4">
-                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" className="w-8 h-8 rounded-full border border-white" />
-                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" className="w-8 h-8 rounded-full border border-white" />
-                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=John" className="w-8 h-8 rounded-full border border-white" />
-                </div>
+              
+              <div className="absolute bottom-4 left-0 lg:-left-10 w-[70%] h-[55%] bg-[#03000a] border border-cyan-500/40 overflow-hidden transform -rotate-y-[10deg] -rotate-z-[3deg] shadow-[0_0_40px_rgba(34,211,238,0.15)] animate-float animation-delay-2000 p-6 flex flex-col justify-end z-20">
+                 <img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80" className="absolute inset-0 w-full h-full object-cover opacity-30 grayscale filter contrast-150" alt="DJ" />
+                 <div className="absolute inset-0 bg-gradient-to-t from-[#03000a] via-[#03000a]/50 to-transparent pointer-events-none" />
+                 <div className="relative z-10 border-l-4 border-cyan-400 pl-5">
+                   <div className="flex items-center gap-2 mb-2">
+                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                     <span className="text-white/60 font-bold tracking-widest text-[10px] uppercase font-mono">Live Session</span>
+                   </div>
+                   <h3 className="text-white font-black text-3xl uppercase tracking-tighter leading-none">Underground <br/>Warehouse</h3>
+                   <div className="flex items-center gap-4 mt-4">
+                     <div className="flex -space-x-3">
+                        {[1,2,3].map(i => <div key={i} className="w-10 h-10 rounded-full border-2 border-[#03000a] bg-slate-800 overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=rave${i}`} className="w-full h-full object-cover" /></div>)}
+                        <div className="w-10 h-10 rounded-full border-2 border-[#03000a] bg-cyan-500 flex items-center justify-center text-xs font-black text-[#03000a] tracking-tighter">+84</div>
+                     </div>
+                   </div>
+                 </div>
               </div>
-            </div>
 
-            {/* Decorative Elements */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500 rounded-full blur-[80px] opacity-40 animate-pulse" />
-            <div className="absolute bottom-0 left-20 w-40 h-40 bg-indigo-500 rounded-full blur-[80px] opacity-40 animate-pulse animation-delay-1000" />
-          </div>
-
+              {/* Decorative elements */}
+              <div className="absolute top-[20%] -left-10 w-24 h-24 bg-rose-500 rounded-full blur-[40px] opacity-30 animate-pulse animation-delay-1000 z-0" />
+              <BarcodeDecor className="absolute -right-8 bottom-1/4 transform rotate-90 text-white/20 hidden lg:block" />
+           </div>
         </div>
       </header>
 
-      {/* Keşfetmeye Başla Section - Redesigned */}
-      <section className="py-32 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+      {/* Manifesto / Stats Marquee */}
+      <div className="w-full relative overflow-hidden bg-fuchsia-600 py-6 transform -skew-y-2 origin-left border-y border-black shadow-[0_0_50px_rgba(217,70,239,0.2)] z-20 my-10">
+        <div className="inline-flex animate-[marquee_20s_linear_infinite] whitespace-nowrap items-center w-[200%]">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="flex items-center gap-16 px-8">
+              <span className="text-black font-black font-outfit text-5xl uppercase tracking-tighter mix-blend-overlay">SIRADANLIĞI REDDET</span>
+              <X size={40} className="text-black opacity-30" />
+              <span className="text-black font-black font-outfit text-5xl uppercase tracking-tighter drop-shadow-[2px_2px_0_rgba(255,255,255,0.5)]">{stats.users} RAVER</span>
+              <X size={40} className="text-black opacity-30" />
+              <span className="text-black font-black font-outfit text-5xl uppercase tracking-tighter mix-blend-overlay">GİZLİ MEKANLAR</span>
+              <X size={40} className="text-black opacity-30" />
+              <span className="text-black font-black font-outfit text-5xl uppercase tracking-tighter drop-shadow-[2px_2px_0_rgba(255,255,255,0.5)]">{stats.events} PARTİ</span>
+              <X size={40} className="text-black opacity-30" />
+            </div>
+          ))}
+        </div>
+      </div>
 
-            {/* Left Content */}
-            <div className="lg:col-span-5 space-y-10 relative z-10">
-              <div className="absolute -left-20 -top-20 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] pointer-events-none" />
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="w-12 h-[2px] bg-rose-500"></span>
-                  <span className="text-rose-500 font-bold tracking-widest text-sm uppercase font-outfit">Keşfetmeye Başla</span>
+      {/* RİTMİ YAKALA Section - Raw Brutalism Discover */}
+      <section id="discover" className="py-24 md:py-40 relative bg-[#03000a] z-10">
+        {/* Subtle grid in background */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
+        
+        <div className="max-w-[1400px] mx-auto px-6 relative">
+          <div className="flex flex-col lg:flex-row gap-16 lg:gap-24 items-start">
+            
+            <div className="w-full lg:w-1/3 lg:sticky lg:top-40 space-y-10">
+              <div>
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="h-[2px] w-8 bg-cyan-400" />
+                  <span className="text-cyan-400 font-bold tracking-[0.3em] text-xs uppercase font-mono">Radar Sistemi</span>
                 </div>
-
-                <h2 className="text-5xl md:text-7xl font-black font-outfit leading-[0.9]">
-                  Sınırlarını <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-rose-400 animate-gradient-x">Zorla.</span>
+                <h2 className="text-5xl sm:text-6xl lg:text-7xl font-black font-outfit uppercase leading-[0.85] tracking-tighter text-white">
+                  RİTMİ <br/>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-cyan-400 animate-gradient-x">YAKALA.</span>
                 </h2>
               </div>
-
-              <p className="text-xl text-text-muted leading-relaxed font-light">
-                Her gün aynı yerlere gitmekten sıkılmadın mı? Silius ile şehrinde daha önce fark etmediğin <span className="text-text-main font-bold text-indigo-400">vibe noktalarını</span> keşfet.
+              
+              <p className="text-white/60 text-lg font-light leading-relaxed border-l border-white/20 pl-6 py-2">
+                Sadece davetlilerin bildiği ev partileri, terkedilmiş depolardaki raveler ve şehrin en iyi club geceleri. Hepsi tek bir radarın ucunda. <b className="text-white font-medium">Bilet almak için sırada bekleme, QR ile direkt mekana dal.</b>
               </p>
-
-              <div className="space-y-6">
+              
+              <div className="space-y-8 pt-4">
                 {[
-                  { title: "Kişiselleştirilmiş Öneriler", icon: Sparkles, color: "text-amber-400" },
-                  { title: "Anlık Etkinlik Bildirimleri", icon: Zap, color: "text-indigo-400" },
-                  { title: "Güvenli Topluluk Deneyimi", icon: Shield, color: "text-emerald-400" }
+                  { title: "BİLET DERDİ YOK", desc: "Kapıda bekleme, oluşturulan QR kod ile direkt giriş yap.", icon: Fingerprint, color: "text-cyan-400" },
+                  { title: "KABİLENİ BUL", desc: "Algoritma değil, seninle aynı BPM'de atan insanlarla eşleş.", icon: Users, color: "text-fuchsia-400" },
+                  { title: "CANLI HARİTA", desc: "Şu an şehrin kalbi nerede atıyor anında radarında gör.", icon: MapPin, color: "text-emerald-400" }
                 ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-4 group cursor-default">
-                    <div className={`w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center ${item.color} group-hover:scale-110 group-hover:bg-white/10 transition-all duration-300 shadow-lg`}>
-                      <item.icon size={22} />
-                    </div>
-                    <span className="text-lg font-medium text-text-main group-hover:translate-x-2 transition-transform">{item.title}</span>
+                  <div key={i} className="flex gap-6 items-start group">
+                     <div className={`p-4 bg-white/[0.02] border border-white/5 rounded-xl group-hover:bg-white/[0.05] group-hover:border-white/20 transition-all duration-300 md:group-hover:scale-110 ${item.color}`}>
+                       <item.icon size={28} strokeWidth={1.5} />
+                     </div>
+                     <div className="pt-1 w-full">
+                       <h4 className="font-black text-white text-lg tracking-wider uppercase mb-1">{item.title}</h4>
+                       <p className="text-sm text-white/50 leading-relaxed group-hover:text-white/80 transition-colors">{item.desc}</p>
+                       <div className={`h-[1px] w-0 bg-current mt-4 group-hover:w-full transition-all duration-500 opacity-20 ${item.color}`} />
+                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Right Visuals - Bento Style */}
-            <div className="lg:col-span-7 relative perspective-1000">
-              {/* Decorative blobs */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-indigo-500/20 to-rose-500/20 rounded-full blur-[100px] animate-pulse" />
+            <div className="w-full lg:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 auto-rows-min mt-10 lg:mt-0">
+               {/* Bento Box 1 - Techno/Acid */}
+               <Link to="/mekanlar" className="aspect-square bg-[#07051a] overflow-hidden relative group border border-white/5 hover:border-cyan-500/50 transition-colors block cursor-pointer">
+                  <img src="https://images.unsplash.com/photo-1545128485-c400e7702796?w=800&q=80" className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-110 group-hover:opacity-80 transition-all duration-[1.5s] mix-blend-screen filter contrast-125 grayscale group-hover:grayscale-0" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[black] via-[#03000a]/80 to-transparent" />
+                  
+                  <div className="absolute inset-x-0 top-0 p-6 flex justify-between items-start opacity-0 -translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
+                     <div className="w-8 h-8 rounded-full border border-cyan-500 flex items-center justify-center backdrop-blur-md">
+                        <ArrowRight size={14} className="text-cyan-400 rotate-45" />
+                     </div>
+                     <span className="px-3 py-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 text-[10px] font-bold uppercase tracking-widest font-mono">Erişim: Açık</span>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-6 transform rotate-y-6 rotate-z-2 transition-transform duration-500 hover:rotate-0">
-                <div className="space-y-6 mt-12">
-                  <div className="h-64 rounded-[2.5rem] bg-indigo-500/10 border border-white/5 overflow-hidden relative group shadow-2xl">
-                    <img src="https://images.unsplash.com/photo-1545128485-c400e7702796?w=600&q=80" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                    <div className="absolute bottom-0 left-0 p-6">
-                      <span className="text-white font-bold text-xl font-outfit">Neon Geceler</span>
-                      <div className="h-1 w-8 bg-indigo-500 mt-2 rounded-full" />
-                    </div>
+                  <div className="absolute bottom-8 left-8 right-8">
+                     <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter leading-none mb-3">Karanlık<br/>Odalar</h3>
+                     <div className="w-full h-[1px] bg-white/10 relative overflow-hidden mb-3">
+                       <div className="absolute inset-y-0 left-0 w-full bg-cyan-500 -translate-x-full group-hover:translate-x-0 transition-transform duration-700 ease-out" />
+                     </div>
+                     <p className="text-cyan-400 text-xs font-bold tracking-[0.2em] font-mono">TECHNO & ACID / ENDÜSTRİYEL</p>
                   </div>
-                  <div className="h-48 rounded-[2.5rem] bg-rose-500/10 border border-white/5 overflow-hidden relative group shadow-2xl">
-                    <img src="https://images.unsplash.com/photo-1514525253440-b393452e3726?w=600&q=80" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                    <div className="absolute bottom-0 left-0 p-6">
-                      <span className="text-white font-bold text-xl font-outfit">Şehir Işıkları</span>
-                      <div className="h-1 w-8 bg-rose-500 mt-2 rounded-full" />
-                    </div>
+               </Link>
+
+               {/* Bento Box 2 - Invite Only House */}
+               <Link to="/mekanlar" className="aspect-square bg-[#07051a] overflow-hidden relative group border border-white/5 hover:border-fuchsia-500/50 transition-colors md:translate-y-16 block cursor-pointer">
+                  <img src="https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800&q=80" className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 group-hover:opacity-90 transition-all duration-[1.5s] mix-blend-screen filter contrast-125 saturate-150 grayscale group-hover:grayscale-0" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[black] via-[#03000a]/80 to-transparent" />
+                  
+                  <div className="absolute inset-x-0 top-0 p-6 flex justify-between items-start opacity-0 -translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
+                     <div className="w-8 h-8 rounded-full border border-fuchsia-500 flex items-center justify-center backdrop-blur-md">
+                        <ArrowRight size={14} className="text-fuchsia-400 rotate-45" />
+                     </div>
+                     <span className="px-3 py-1 bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/30 text-[10px] font-bold uppercase tracking-widest font-mono">Sadece Davetiye</span>
                   </div>
-                </div>
-                <div className="space-y-6">
-                  <div className="h-48 rounded-[2.5rem] bg-purple-500/10 border border-white/5 overflow-hidden relative group shadow-2xl">
-                    <img src="https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=600&q=80" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                    <div className="absolute bottom-0 left-0 p-6">
-                      <span className="text-white font-bold text-xl font-outfit">Sörf & Sahil</span>
-                      <div className="h-1 w-8 bg-purple-500 mt-2 rounded-full" />
-                    </div>
+
+                  <div className="absolute bottom-8 left-8 right-8">
+                     <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter leading-none mb-3">Özel Ev<br/>Partileri</h3>
+                     <div className="w-full h-[1px] bg-white/10 relative overflow-hidden mb-3">
+                       <div className="absolute inset-y-0 left-0 w-full bg-fuchsia-500 -translate-x-full group-hover:translate-x-0 transition-transform duration-700 ease-out" />
+                     </div>
+                     <p className="text-fuchsia-400 text-xs font-bold tracking-[0.2em] font-mono">GİZLİ LOKASYONLAR</p>
                   </div>
-                  <div className="h-64 rounded-[2.5rem] bg-emerald-500/10 border border-white/5 overflow-hidden relative group shadow-2xl">
-                    <img src="https://images.unsplash.com/photo-1502444330042-d1a1ddf9bb5b?w=600&q=80" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                    <div className="absolute bottom-0 left-0 p-6">
-                      <span className="text-white font-bold text-xl font-outfit">Doğa Yürüyüşü</span>
-                      <div className="h-1 w-8 bg-emerald-500 mt-2 rounded-full" />
-                    </div>
+               </Link>
+
+               {/* Bento Box 3 - Wide (Open Air) */}
+               <Link to="/mekanlar" className="md:col-span-2 h-[300px] md:h-[350px] bg-[#07051a] overflow-hidden relative group border border-white/5 hover:border-emerald-500/50 transition-colors md:mt-16 block cursor-pointer">
+                  <img src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&q=80" className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 group-hover:opacity-100 transition-all duration-[2s] mix-blend-luminosity grayscale group-hover:grayscale-0" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[black] via-[#03000a]/80 to-transparent md:w-[70%]" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[black] to-transparent md:hidden" />
+                  
+                  <div className="absolute bottom-8 left-8 md:top-1/2 md:-translate-y-1/2 md:max-w-md">
+                     <div className="inline-block px-4 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold tracking-[0.3em] uppercase font-mono mb-6 backdrop-blur-md">Açık Hava & Sokak</div>
+                     <h3 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter leading-[0.9] mb-4 group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all">Şehri Uykusundan <br/><span className="text-emerald-400">Uyandır.</span></h3>
+                     <p className="text-white/50 text-sm md:text-base font-light hidden md:block">Güneşin doğuşunu sahilde karşılamak veya şehrin sokaklarında block party ruhunu yaşamak isteyenler için.</p>
                   </div>
-                </div>
-              </div>
+                  
+                  <div className="absolute right-8 bottom-8 md:top-1/2 md:-translate-y-1/2 w-16 h-16 rounded-full border-2 border-emerald-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-500 bg-black/40 backdrop-blur-md">
+                     <ArrowRight size={24} className="text-emerald-400" />
+                  </div>
+               </Link>
             </div>
+
           </div>
         </div>
       </section>
 
-      {/* Categories Modern Slider */}
-      <section className="py-24 border-t border-white/5 bg-gradient-to-b from-transparent to-black/20">
-        <div className="max-w-7xl mx-auto px-6 mb-16 flex items-end justify-between">
-          <div>
-            <span className="text-indigo-500 font-bold tracking-widest text-xs uppercase mb-3 block font-outfit">Kendini Bul</span>
-            <h2 className="text-4xl md:text-5xl font-black font-outfit">Popüler Kategoriler</h2>
+      {/* 🎶 Parti Kategorileri - Underground Cyber-Rave Redesign */}
+      <section className="py-32 relative overflow-hidden bg-[#03000a] border-t border-fuchsia-500/10">
+        {/* Gritty Noise & Grid Overlay */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")' }} />
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+        
+        {/* Abstract Neon Glows */}
+        <div className="absolute top-0 right-[-10%] w-[800px] h-[800px] rounded-full bg-fuchsia-600/10 blur-[150px] mix-blend-screen pointer-events-none" />
+        <div className="absolute bottom-0 left-[-10%] w-[800px] h-[800px] rounded-full bg-cyan-600/10 blur-[150px] mix-blend-screen pointer-events-none" />
+
+        <div className="w-full max-w-[1400px] mx-auto px-6 mb-20 flex flex-col md:flex-row md:items-end justify-between gap-8 relative z-10">
+          <div className="relative">
+            {/* Architectural Header */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className="h-[2px] w-12 bg-gradient-to-r from-fuchsia-500 to-cyan-500" />
+              <span className="text-fuchsia-400 font-bold tracking-[0.3em] text-xs uppercase font-outfit block">Parti Zamanı</span>
+            </div>
+            <h2 className="text-5xl md:text-8xl font-black font-outfit uppercase tracking-tighter text-white leading-[0.9] relative group">
+              <span className="block opacity-40 transform translate-y-4 group-hover:translate-y-2 group-hover:opacity-20 transition-all duration-500">PARTİ</span>
+              <span className="relative z-10 block text-transparent bg-clip-text bg-gradient-to-br from-white to-white/60 drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">KATEGORİLERİ</span>
+            </h2>
           </div>
-          <Link to="/mekanlar" className="group flex items-center gap-3 text-text-muted hover:text-white transition-colors px-6 py-3 rounded-full border border-white/5 hover:bg-white/5">
-            <span className="font-bold">Tümünü Gör</span>
-            <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-              <ArrowRight size={14} />
+          
+          <Link to="/mekanlar" className="relative group overflow-hidden rounded-full p-[1px] shrink-0 self-start md:self-auto mt-4 md:mt-0">
+            <span className="absolute inset-0 bg-gradient-to-r from-fuchsia-500 via-cyan-500 to-fuchsia-500 bg-[length:200%_auto] animate-gradient-x opacity-70 group-hover:opacity-100 transition-opacity" />
+            <div className="relative bg-slate-950 px-8 py-4 rounded-full flex items-center gap-3 transition-all group-hover:bg-transparent duration-300">
+              <span className="font-outfit font-bold text-white uppercase tracking-widest text-sm">Tümünü Gör</span>
+              <ArrowRight size={16} className="text-cyan-400 group-hover:translate-x-1 group-hover:text-white transition-all" />
             </div>
           </Link>
         </div>
 
-        <div className="relative w-full overflow-hidden">
-          <div className="flex gap-6 overflow-x-auto pb-12 px-6 no-scrollbar snap-x scroll-padding-x-6">
+        <div className="w-full max-w-[1400px] mx-auto px-6 relative z-10">
+          {/* Brutalist Accordion Grid */}
+          <div className="flex flex-col md:flex-row w-full h-[800px] md:h-[600px] gap-3 md:gap-4 transition-all duration-700">
             {[
-              { name: 'Müzik & Sanat', img: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae', count: '120+ Etkinlik', color: 'bg-rose-500' },
-              { name: 'Kahve & Sohbet', img: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf', count: '85+ Mekan', color: 'bg-amber-500' },
-              { name: 'Spor & Outdoor', img: 'https://images.unsplash.com/photo-1517649763962-0c623066013b', count: '45+ Grup', color: 'bg-emerald-500' },
-              { name: 'Teknoloji', img: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c', count: '20+ Workshop', color: 'bg-blue-500' },
-              { name: 'Oyun', img: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc', count: 'Turnuvalar', color: 'bg-purple-500' },
-              { name: 'Eğitim', img: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6', count: 'Seminerler', color: 'bg-cyan-500' },
-              { name: 'Gezi', img: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828', count: 'Turlar', color: 'bg-orange-500' },
+              { name: 'Club Night', sub: 'Her Gece', img: 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?q=80&w=1200', textColors: 'text-fuchsia-400', gradient: 'from-fuchsia-600 to-purple-900', borderHover: 'group-hover:border-fuchsia-500/50' },
+              { name: 'Rave', sub: 'Underground', img: 'https://images.unsplash.com/photo-1545128485-c400e7702796?q=80&w=1200', textColors: 'text-cyan-400', gradient: 'from-cyan-500 to-blue-900', borderHover: 'group-hover:border-cyan-400/50' },
+              { name: 'Sahil', sub: 'Gündüz & Gece', img: 'https://images.unsplash.com/photo-1515405295579-ba7b45403062?q=80&w=1200', textColors: 'text-amber-400', gradient: 'from-amber-500 to-orange-900', borderHover: 'group-hover:border-amber-400/50' },
+              { name: 'Ev Partisi', sub: 'Özel Davet', img: 'https://images.unsplash.com/photo-1504196606672-aef5c9cefc92?q=80&w=1200', textColors: 'text-rose-400', gradient: 'from-rose-500 to-red-900', borderHover: 'group-hover:border-rose-400/50' },
+              { name: 'Sokak', sub: 'Açık Hava', img: 'https://images.unsplash.com/photo-1563841930606-67e2bce48b78?q=80&w=1200', textColors: 'text-emerald-400', gradient: 'from-emerald-500 to-teal-900', borderHover: 'group-hover:border-emerald-400/50' },
             ].map((cat, i) => (
-              <Link to="/mekanlar" key={i} className="relative flex-none w-[245px] h-[350px] rounded-[2.5rem] overflow-hidden group snap-center cursor-pointer shadow-xl border border-white/5">
-                <div className="absolute inset-0 bg-slate-900 animate-pulse" /> {/* Placeholder */}
-                <img src={`${cat.img}?w=600&q=80`} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 group-hover:rotate-1" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+              <Link 
+                to="/mekanlar" 
+                key={i} 
+                className={`group relative flex-1 hover:flex-[3] md:hover:flex-[4] transition-[flex] duration-[800ms] ease-[cubic-bezier(0.25,1,0.5,1)] cursor-pointer overflow-hidden rounded-[2rem] border border-white/5 bg-slate-900 shadow-2xl ${cat.borderHover}`}
+              >
+                {/* Background Image with intense zoom effect */}
+                <img 
+                  src={cat.img} 
+                  alt={cat.name}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-110 group-hover:rotate-1 opacity-50 md:opacity-30 group-hover:opacity-100 grayscale-[30%] group-hover:grayscale-0" 
+                />
+                
+                {/* Layered Overlays */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#03000a] via-[#03000a]/50 to-transparent md:opacity-90 group-hover:opacity-[0.85] transition-opacity duration-500" />
+                <div className={`absolute inset-0 bg-gradient-to-br ${cat.gradient} mix-blend-color opacity-0 group-hover:opacity-40 transition-opacity duration-700`} />
 
-                <div className="absolute top-6 right-6">
-                  <div className={`w-3 h-3 rounded-full ${cat.color} shadow-[0_0_15px_rgba(255,255,255,0.5)]`} />
+                {/* Vertical Text (Default state on desktop) */}
+                <div className="absolute inset-0 hidden md:flex items-center justify-center opacity-100 group-hover:opacity-0 transition-opacity duration-300 pointer-events-none">
+                  <span className="text-white font-outfit font-black text-3xl uppercase tracking-[0.2em] -rotate-90 whitespace-nowrap opacity-40 group-hover:opacity-0 transition-all duration-300">
+                    {cat.name}
+                  </span>
                 </div>
 
-                <div className="absolute bottom-0 left-0 right-0 p-8 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-                  <h3 className="text-3xl font-black font-outfit text-white mb-2 leading-none">{cat.name}</h3>
-                  <div className="h-1 w-0 bg-white transition-all duration-500 group-hover:w-full mb-4 opacity-50" />
-                  <p className="text-sm text-white/90 font-bold tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75 transform translate-y-4 group-hover:translate-y-0 flex items-center gap-2">
-                    {cat.count} <ArrowRight size={12} />
-                  </p>
+                {/* Content (Visible on mobile, revealed on hover entirely for desktop) */}
+                <div className="absolute inset-0 p-6 md:p-8 flex flex-col justify-end transform md:translate-y-8 md:opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-700 delay-75">
+                  <div className="overflow-hidden mb-1">
+                    <span className={`${cat.textColors} font-bold font-outfit tracking-[0.3em] text-xs md:text-sm uppercase block transform md:translate-y-full group-hover:translate-y-0 transition-transform duration-700 delay-150`}>
+                      {cat.sub}
+                    </span>
+                  </div>
+                  
+                  <h3 className="text-3xl md:text-5xl lg:text-6xl font-black font-outfit text-white uppercase tracking-tighter leading-none mb-4 drop-shadow-[0_4px_24px_rgba(0,0,0,1)]">
+                    {cat.name.split(' ').map((word, idx) => (
+                      <span key={idx} className="block">{word}</span>
+                    ))}
+                  </h3>
+                  
+                  <div className={`w-0 h-1 bg-gradient-to-r ${cat.gradient} group-hover:w-full transition-all duration-1000 delay-300 mb-6`} />
+                  
+                  <div className="flex items-center gap-3 transform md:translate-y-8 group-hover:translate-y-0 transition-all duration-700 delay-300 opacity-0 group-hover:opacity-100">
+                    <div className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md bg-white/5">
+                      <ArrowRight size={16} className={cat.textColors} />
+                    </div>
+                    <span className="text-white/80 font-medium text-sm tracking-wide uppercase">Keşfet</span>
+                  </div>
+                </div>
+                
+                {/* Mobile specific persistent content so it's not totally blank before tap */}
+                <div className="absolute right-6 bottom-6 md:hidden opacity-100 group-hover:opacity-0 transition-opacity">
+                  <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                    <Plus size={20} className="text-white" />
+                  </div>
+                </div>
+                <div className="absolute left-6 bottom-6 md:hidden opacity-100 group-hover:opacity-0 transition-opacity">
+                   <h3 className="text-2xl font-black font-outfit text-white uppercase tracking-tighter">
+                    {cat.name}
+                  </h3>
                 </div>
               </Link>
             ))}
@@ -446,162 +466,88 @@ const Landing: React.FC = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-32 relative overflow-hidden">
-        {/* Background Glows */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-rose-500/10 rounded-full blur-[100px] pointer-events-none" />
-
-        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50" />
-
-        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
-          <h2 className="text-6xl md:text-8xl font-black font-outfit mb-8 tracking-tight leading-[1.1]">
-            Hazır mısın? <br />
-            <span className="relative inline-block mt-2">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-500 via-purple-500 to-indigo-500 animate-gradient-x">Hikayeni Başlat.</span>
-              <div className="absolute -bottom-4 left-0 right-0 h-4 bg-gradient-to-r from-rose-500 to-indigo-500 blur-xl opacity-30" />
-            </span>
+      <section className="py-40 relative bg-[#03000a] flex items-center justify-center overflow-hidden border-t border-fuchsia-500/10">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(217,70,239,0.15)_0%,rgba(0,0,0,0)_60%)] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent pointer-events-none" />
+        
+        <div className="relative z-10 text-center px-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 border border-white/10 bg-white/5 rounded-full mb-8 backdrop-blur-sm">
+             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+             <span className="text-[10px] font-bold text-white/50 tracking-widest uppercase">Girişler Açık</span>
+          </div>
+          <h2 className="text-[5rem] md:text-[10rem] lg:text-[12rem] font-black font-outfit uppercase tracking-tighter leading-[0.8] text-white opacity-90 mb-12 drop-shadow-[0_0_50px_rgba(217,70,239,0.3)] hover:scale-105 transition-transform duration-700 cursor-default">
+            SAHNEYE<br/>ÇIK
           </h2>
-
-          <p className="text-xl md:text-2xl font-light opacity-80 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Binlerce kişi Silius'ta <span className="text-indigo-400 font-medium">yeni arkadaşlar ediniyor</span>, etkinlikler düzenliyor ve hayatı <span className="text-rose-400 font-medium">dolu dolu yaşıyor.</span>
-          </p>
-
-          <div className="relative group inline-block">
-            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-rose-500 rounded-full blur opacity-40 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
-            {user ? (
-              <Link to="/home" className="relative inline-flex items-center gap-4 px-12 py-6 bg-text-main text-bg-deep rounded-full font-bold text-xl hover:scale-105 transition-all shadow-2xl">
-                <span>Uygulamaya Git</span>
-                <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-            ) : (
-              <Link to="/auth" className="relative inline-flex items-center gap-4 px-12 py-6 bg-text-main text-bg-deep rounded-full font-bold text-xl hover:scale-105 transition-all shadow-2xl">
-                <span>Ücretsiz Hesap Oluştur</span>
-                <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-            )}
-          </div>
-
-          {/* Trust Indicators (Marquee) */}
-          <div className="mt-24 w-screen relative left-1/2 -translate-x-1/2 overflow-hidden border-y border-white/10 py-12 bg-black/40 backdrop-blur-md transform -skew-y-2 origin-left">
-            <div className="inline-flex animate-marquee whitespace-nowrap items-center hover:paused">
-              {[...Array(1)].map((_, i) => (
-                <div key={i} className="flex items-center gap-24 px-8">
-                  <div className="flex items-end gap-3 group">
-                    <span className="text-7xl md:text-8xl font-black font-outfit text-white drop-shadow-[0_0_20px_rgba(99,102,241,0.6)] group-hover:drop-shadow-[0_0_40px_rgba(99,102,241,0.9)] transition-all duration-300 italic">
-                      {stats.users}
-                    </span>
-                    <span className="text-base font-bold tracking-widest text-indigo-400 mb-5 uppercase italic">Kullanıcı</span>
-                  </div>
-
-                  <Zap size={18} className="text-yellow-400/60" />
-
-                  <div className="flex items-end gap-3 group">
-                    <span className="text-7xl md:text-8xl font-black font-outfit text-white drop-shadow-[0_0_20px_rgba(168,85,247,0.6)] group-hover:drop-shadow-[0_0_40px_rgba(168,85,247,0.9)] transition-all duration-300 italic">
-                      {stats.events}
-                    </span>
-                    <span className="text-base font-bold tracking-widest text-purple-400 mb-5 uppercase italic">Vibe</span>
-                  </div>
-
-                  <Zap size={18} className="text-yellow-400/60" />
-
-                  <div className="flex items-end gap-3 group">
-                    <span className="text-7xl md:text-8xl font-black font-outfit text-white drop-shadow-[0_0_20px_rgba(244,63,94,0.6)] group-hover:drop-shadow-[0_0_40px_rgba(244,63,94,0.9)] transition-all duration-300 italic">
-                      {stats.vibeScore}
-                    </span>
-                    <span className="text-base font-bold tracking-widest text-rose-400 mb-5 uppercase italic">Toplam Puan</span>
-                  </div>
-
-                  <Zap size={18} className="text-yellow-400/60" />
-                </div>
-              ))}
-            </div>
-
-            <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-slate-950 to-transparent z-10 pointer-events-none" />
-            <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-slate-950 to-transparent z-10 pointer-events-none" />
-          </div>
-        </div>
-
-        {/* Expanded Footer */}
-        <div className="max-w-7xl mx-auto px-6 mt-32 border-t border-opacity-10 dark:border-white/10 border-black/10 pt-20">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-16">
-            <div className="col-span-2 md:col-span-1 space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-rose-600 flex items-center justify-center">
-                  <Sparkles size={16} className="text-white" fill="white" />
-                </div>
-                <span className="text-xl font-black font-outfit">Silius</span>
-              </div>
-              <p className="text-sm opacity-60 leading-relaxed">
-                Yeni nesil sosyalleşme platformu. Şehrin ritmini yakala, gerçek bağlar kur.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-bold mb-6">Keşfet</h4>
-              <ul className="space-y-4 text-sm opacity-60">
-                <li><Link to="/vibeler" className="hover:text-indigo-500 hover:opacity-100 transition-all">Vibeler</Link></li>
-                <li><Link to="/mekanlar" className="hover:text-indigo-500 hover:opacity-100 transition-all">Mekanlar</Link></li>
-                <li><Link to="/topluluk" className="hover:text-indigo-500 hover:opacity-100 transition-all">Topluluklar</Link></li>
-                <li><Link to="/events" className="hover:text-indigo-500 hover:opacity-100 transition-all">Etkinlikler</Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-bold mb-6">Kurumsal</h4>
-              <ul className="space-y-4 text-sm opacity-60">
-                <li><Link to="/about" className="hover:text-indigo-500 hover:opacity-100 transition-all">Hakkımızda</Link></li>
-                <li><Link to="/contact" className="hover:text-indigo-500 hover:opacity-100 transition-all">İletişim</Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-bold mb-6">Yasal</h4>
-              <ul className="space-y-4 text-sm opacity-60">
-                <li><Link to="/privacy" className="hover:text-indigo-500 hover:opacity-100 transition-all">Gizlilik Politikası</Link></li>
-                <li><Link to="/terms" className="hover:text-indigo-500 hover:opacity-100 transition-all">Kullanım Koşulları</Link></li>
-                <li><Link to="/guidelines" className="hover:text-indigo-500 hover:opacity-100 transition-all">Topluluk Kuralları</Link></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-opacity-10 dark:border-white/10 border-black/10 pt-8 flex flex-col md:flex-row justify-between items-center opacity-60 text-sm">
-            <p>© 2024 Silius Platform. Tüm hakları saklıdır.</p>
-            <div className="flex gap-6 mt-4 md:mt-0">
-              {/* Social Icons Placeholder */}
-              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 cursor-pointer transition-colors"><Globe size={14} /></div>
-              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 cursor-pointer transition-colors"><MapPin size={14} /></div>
-            </div>
-          </div>
+          
+          <Link to={user ? "/home" : "/auth"} className="relative group inline-flex items-center justify-center">
+             <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-500 to-cyan-500 blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+             <div className="relative flex items-center gap-4 px-12 py-6 bg-white text-black font-black uppercase tracking-widest hover:bg-cyan-400 transition-colors duration-300 w-full sm:w-auto justify-center z-10">
+               <span>Sisteme Bağlan</span>
+               <ChevronRight size={24} className="group-hover:translate-x-2 transition-transform" />
+             </div>
+          </Link>
         </div>
       </section>
 
+      {/* Extreme Minimal Footer */}
+      <footer className="bg-[#03000a] border-t border-white/5 pt-20 pb-10 relative z-10">
+        <div className="max-w-[1400px] mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-12 mb-20">
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <ScanLine size={24} className="text-white" />
+                <span className="text-3xl font-black font-outfit uppercase tracking-tighter text-white">Silius</span>
+              </div>
+              <p className="text-white/40 text-sm max-w-sm font-light">İstanbul un yeraltı ritmi. Algoritmaları unut, müziğe güven. Sadece davetli olanların bildiği dünyayı keşfet.</p>
+            </div>
+            
+            <div className="flex gap-16">
+              <div className="space-y-4">
+                <h4 className="text-white/30 font-bold uppercase tracking-widest text-[10px] font-mono">Keşfet</h4>
+                <ul className="space-y-3">
+                  <li><Link to="/vibeler" className="text-white/70 hover:text-cyan-400 hover:tracking-widest transition-all text-sm uppercase">Radar</Link></li>
+                  <li><Link to="/mekanlar" className="text-white/70 hover:text-cyan-400 hover:tracking-widest transition-all text-sm uppercase">Mekanlar</Link></li>
+                </ul>
+              </div>
+              <div className="space-y-4">
+                <h4 className="text-white/30 font-bold uppercase tracking-widest text-[10px] font-mono">Sistem</h4>
+                <ul className="space-y-3">                    <li><Link to="/nasil-kullanilir" className="text-white/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Nasıl Kullanılır?</Link></li>                  <li><Link to="/about" className="text-white/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Manifesto</Link></li>
+                  <li><Link to="/guidelines" className="text-white/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Kurallar</Link></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/5 text-white/30 text-xs font-mono uppercase tracking-widest">
+            <p>© 2026 SILIUS CLUB. NO RIGHTS RESERVED.</p>
+            <div className="flex gap-6 mt-4 md:mt-0">
+              <a href="#" className="hover:text-white transition-colors">INSTAGRAM</a>
+              <a href="#" className="hover:text-white transition-colors">SOUNDCLOUD</a>
+            </div>
+          </div>
+        </div>
+      </footer>
+
       <style>{`
         .perspective-1000 { perspective: 1000px; }
-        .transform-style-3d { transform-style: preserve-3d; }
         @keyframes float {
-          0%, 100% { transform: translateY(0) rotateY(12deg) rotateZ(6deg); }
-          50% { transform: translateY(-20px) rotateY(12deg) rotateZ(6deg); }
+          0%, 100% { transform: translateY(0) rotateY(10deg) rotateZ(4deg); }
+          50% { transform: translateY(-15px) rotateY(12deg) rotateZ(5deg); }
         }
-        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-float { animation: float 8s ease-in-out infinite; }
         
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob { animation: blob 7s infinite; }
-
         @keyframes marquee {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
-        .animate-marquee { animation: marquee 30s linear infinite; }
         .hover\:paused:hover { animation-play-state: paused; }
-        .animate-spin-slow { animation: spin 8s linear infinite; }
-        
+        .animation-delay-1000 { animation-delay: 1s; }
         .animation-delay-2000 { animation-delay: 2s; }
-        .animation-delay-4000 { animation-delay: 4s; }
+        
+        @keyframes scaleIn {
+          0% { transform: scale(0.9); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -609,5 +555,22 @@ const Landing: React.FC = () => {
     </div>
   );
 };
+
+// SVG Icon Components for extreme aesthetics
+const BarcodeDecor = ({ className = "" }) => (
+  <svg width="100" height="40" viewBox="0 0 100 40" fill="currentColor" className={className}>
+    <rect x="0" y="0" width="4" height="40" />
+    <rect x="8" y="0" width="2" height="40" />
+    <rect x="14" y="0" width="8" height="40" />
+    <rect x="26" y="0" width="4" height="40" />
+    <rect x="34" y="0" width="2" height="40" />
+    <rect x="40" y="0" width="12" height="40" />
+    <rect x="56" y="0" width="2" height="40" />
+    <rect x="62" y="0" width="6" height="40" />
+    <rect x="72" y="0" width="14" height="40" />
+    <rect x="90" y="0" width="4" height="40" />
+    <rect x="98" y="0" width="2" height="40" />
+  </svg>
+);
 
 export default Landing;

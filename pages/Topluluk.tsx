@@ -2,27 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../database';
 import { Shield, Github, Heart, Globe, Code, Sun, Moon, Home } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 
 const Community: React.FC = () => {
     const [userCount, setUserCount] = useState(0);
-    const [isDarkMode, setIsDarkMode] = useState(true);
+    const { isDarkMode, toggleTheme } = useTheme();
 
     useEffect(() => {
-        db.getUsers().then(users => setUserCount(users.length)).catch(() => setUserCount(142));
+        db.getUsers().then(users => setUserCount(users.length)).catch(() => setUserCount(0));
     }, []);
-
-    useEffect(() => {
-        const savedTheme = localStorage.getItem('silius_theme');
-        if (savedTheme) {
-            setIsDarkMode(savedTheme === 'dark');
-        }
-    }, []);
-
-    const toggleTheme = () => {
-        const newMode = !isDarkMode;
-        setIsDarkMode(newMode);
-        localStorage.setItem('silius_theme', newMode ? 'dark' : 'light');
-    };
 
     return (
         <div className={`min-h-screen pt-32 px-6 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>

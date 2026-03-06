@@ -25,7 +25,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
       return;
     }
 
-    if (window.google?.maps) {
+    if (window.google?.maps?.Map) {
       setIsGoogleLoaded(true);
       return;
     }
@@ -33,7 +33,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     const existingScript = document.querySelector(`script[src*="maps.googleapis.com"]`);
     if (existingScript) {
       const checkGoogle = setInterval(() => {
-        if (window.google?.maps) {
+        if (window.google?.maps?.Map) {
           setIsGoogleLoaded(true);
           clearInterval(checkGoogle);
         }
@@ -42,17 +42,26 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&language=tr&loading=async`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&language=tr`;
     script.async = true;
     script.defer = true;
-    script.onload = () => setIsGoogleLoaded(true);
+    script.onload = () => {
+      const waitForMap = setInterval(() => {
+        if (window.google?.maps?.Map) {
+          setIsGoogleLoaded(true);
+          clearInterval(waitForMap);
+        }
+      }, 50);
+    };
     document.head.appendChild(script);
   }, []);
 
   useEffect(() => {
-    if (!mapRef.current || !isGoogleLoaded || !window.google) return;
+    if (!mapRef.current || !isGoogleLoaded || !window.google?.maps?.Map) return;
 
-    const map = new window.google.maps.Map(mapRef.current, {
+    let map: google.maps.Map;
+    try {
+    map = new window.google.maps.Map(mapRef.current, {
       center: { lat: latitude, lng: longitude },
       zoom: 16,
       styles: [
@@ -85,6 +94,9 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
         strokeWeight: 3
       }
     });
+    } catch (e) {
+      console.warn('Google Maps yüklenemedi:', e);
+    }
   }, [isGoogleLoaded, latitude, longitude]);
 
   const openInGoogleMaps = () => {
