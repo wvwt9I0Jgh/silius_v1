@@ -9,6 +9,7 @@
 -- =============================================
 
 -- Tabloları sil
+DROP TABLE IF EXISTS public.event_gallery CASCADE;
 DROP TABLE IF EXISTS public.notifications CASCADE;
 DROP TABLE IF EXISTS public.friends CASCADE;
 DROP TABLE IF EXISTS public.comments CASCADE;
@@ -33,9 +34,17 @@ CREATE TABLE public.users (
   username text UNIQUE NOT NULL,
   bio text DEFAULT 'Silius''ta yeni bir macera başlıyor...',
   avatar text,
+  age INTEGER,
   gender text CHECK (gender IN ('male', 'female', 'transgender', 'lesbian', 'gay', 'bisexual_male', 'bisexual_female', 'prefer_not_to_say') OR gender IS NULL),
   role text DEFAULT 'user' CHECK (role IN ('user', 'admin')),
   "hasAcceptedTerms" boolean DEFAULT true,
+  "isProfileComplete" boolean DEFAULT false,
+  kvkk_consent boolean DEFAULT true,
+  kvkk_consent_date timestamp with time zone,
+  "totalTimeSpent" integer DEFAULT 0,
+  "lastActiveAt" timestamp with time zone DEFAULT now(),
+  "dailyVibeCount" integer DEFAULT 0,
+  "lastVibeDate" date DEFAULT CURRENT_DATE,
   created_at timestamp with time zone DEFAULT now()
 );
 
@@ -47,8 +56,11 @@ CREATE TABLE public.events (
   description text NOT NULL,
   date date NOT NULL,
   location text NOT NULL,
+  latitude double precision,
+  longitude double precision,
   image text NOT NULL,
   category text NOT NULL CHECK (category IN ('club', 'rave', 'beach', 'house', 'street', 'pub', 'coffee', 'other')),
+  checkin_code text DEFAULT substring(md5(random()::text) from 0 for 7),
   created_at timestamp with time zone DEFAULT now()
 );
 
@@ -58,6 +70,7 @@ CREATE TABLE public.event_participants (
   event_id uuid REFERENCES public.events(id) ON DELETE CASCADE NOT NULL,
   user_id uuid REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
   joined_at timestamp with time zone DEFAULT now(),
+  checked_in boolean DEFAULT false,
   UNIQUE(event_id, user_id)
 );
 
@@ -67,6 +80,23 @@ CREATE TABLE public.comments (
   event_id uuid REFERENCES public.events(id) ON DELETE CASCADE NOT NULL,
   user_id uuid REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
   text text NOT NULL,
+  parent_comment_id uuid,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+-- parent_comment_id foreign key (tablo oluştuktan sonra ekle)
+ALTER TABLE public.comments 
+  ADD CONSTRAINT fk_parent_comment 
+  FOREIGN KEY (parent_comment_id) REFERENCES public.comments(id) ON DELETE CASCADE;
+
+-- 4b. EVENT_GALLERY TABLOSU
+CREATE TABLE public.event_gallery (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_id uuid REFERENCES public.events(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+  image_url text NOT NULL,
+  caption text,
+  display_order integer DEFAULT 0,
   created_at timestamp with time zone DEFAULT now()
 );
 
@@ -103,6 +133,7 @@ ALTER TABLE public.event_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.friends ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_gallery ENABLE ROW LEVEL SECURITY;
 
 -- =============================================
 -- ADIM 4: RLS POLICY'LERİ OLUŞTUR
@@ -149,6 +180,24 @@ CREATE POLICY "Users can join events"
 
 CREATE POLICY "Users can leave events"
   ON public.event_participants FOR DELETE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own participation"
+  ON public.event_participants FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- EVENT_GALLERY POLICIES
+CREATE POLICY "Gallery viewable by everyone"
+  ON public.event_gallery FOR SELECT
+  USING (true);
+
+CREATE POLICY "Users can add gallery photos"
+  ON public.event_gallery FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own gallery photos"
+  ON public.event_gallery FOR DELETE
   USING (auth.uid() = user_id);
 
 -- COMMENTS POLICIES
@@ -265,6 +314,8 @@ CREATE INDEX IF NOT EXISTS idx_comments_event_id ON public.comments(event_id);
 CREATE INDEX IF NOT EXISTS idx_friends_user_id ON public.friends(user_id);
 CREATE INDEX IF NOT EXISTS idx_friends_friend_id ON public.friends(friend_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_event_gallery_event_id ON public.event_gallery(event_id);
+CREATE INDEX IF NOT EXISTS idx_comments_parent_id ON public.comments(parent_comment_id);
 
 -- =============================================
 -- ADIM 8: STORAGE BUCKET POLICY'LERİ (AVATARS)

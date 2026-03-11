@@ -1,0 +1,440 @@
+﻿version: "2"
+type: backend
+tech_stack:
+  - language: TypeScript
+  - framework: Supabase (Backend as a Service)
+  - database: PostgreSQL (via Supabase)
+  - other: Supabase Auth, Supabase Realtime, Supabase Storage, Supabase REST API (PostgREST)
+features:
+  - name: Authentication API
+    description: User authentication via Supabase Auth (email/password and Google OAuth)
+    files:
+      - lib/supabase.ts
+      - context/AuthContext.tsx
+    endpoints:
+      - method: POST
+        path: /auth/v1/signup
+        description: Create new user account with email and password
+        auth_required: false
+        request_schema:
+          body:
+            email: string
+            password: string
+        response_schema:
+          "200": "{user, session}"
+          "422": Validation error (weak password, invalid email)
+          "400": Email already registered
+      - method: POST
+        path: /auth/v1/token?grant_type=password
+        description: Sign in with email and password to get JWT session
+        auth_required: false
+        request_schema:
+          body:
+            email: string
+            password: string
+        response_schema:
+          "200": "{access_token, refresh_token, user}"
+          "400": Invalid credentials
+      - method: POST
+        path: /auth/v1/logout
+        description: Invalidate current user session
+        auth_required: true
+        response_schema:
+          "204": Success
+      - method: GET
+        path: /auth/v1/user
+        description: Get currently authenticated user
+        auth_required: true
+        response_schema:
+          "200": User object
+          "401": Unauthorized
+  - name: Users API
+    description: CRUD operations for user profiles stored in the users table
+    files:
+      - database.ts
+      - pages/Profile.tsx
+    endpoints:
+      - method: GET
+        path: /rest/v1/users
+        description: List all users (for leaderboard and user browsing)
+        auth_required: false
+        response_schema:
+          "200": User[]
+      - method: GET
+        path: /rest/v1/users?id=eq.{userId}
+        description: Get a single user profile by ID
+        auth_required: false
+        response_schema:
+          "200": User
+          "404": Not found
+      - method: PATCH
+        path: /rest/v1/users?id=eq.{userId}
+        description: Update user profile fields (firstName, lastName, bio, avatar, gender, etc.)
+        auth_required: true
+        request_schema:
+          body:
+            firstName: string (optional)
+            lastName: string (optional)
+            username: string (optional, min 3 chars)
+            bio: string (optional)
+            avatar: string URL (optional)
+            gender: string (optional)
+            age: number (optional)
+        response_schema:
+          "200": Updated user
+          "409": Username already taken
+          "401": Unauthorized
+    depends_on:
+      - Authentication API
+  - name: Events (Vibes) API
+    description: CRUD operations for platform events (vibes) with daily creation limit (3/day per user)
+    files:
+      - database.ts
+      - pages/Home.tsx
+      - pages/EventDetail.tsx
+    endpoints:
+      - method: GET
+        path: /rest/v1/events?order=created_at.desc
+        description: List all events sorted by creation date
+        auth_required: false
+        response_schema:
+          "200": Event[]
+      - method: GET
+        path: /rest/v1/events?id=eq.{eventId}
+        description: Get single event by ID
+        auth_required: false
+        response_schema:
+          "200": Event
+          "404": Not found
+      - method: POST
+        path: /rest/v1/events
+        description: Create a new event/vibe (max 3 per day per user, enforced client-side)
+        auth_required: true
+        request_schema:
+          body:
+            title: string
+            description: string
+            date: string (ISO date)
+            location: string
+            category: "club|rave|beach|house|street|pub|coffee|other"
+            image_url: string URL
+            user_id: string UUID
+        response_schema:
+          "201": Created event
+          "401": Unauthorized
+      - method: PATCH
+        path: /rest/v1/events?id=eq.{eventId}
+        description: Update existing event (owner only, enforced by RLS)
+        auth_required: true
+        request_schema:
+          body:
+            title: string (optional)
+            description: string (optional)
+            location: string (optional)
+            date: string (optional)
+        response_schema:
+          "200": Updated event
+          "403": Not owner (RLS violation)
+      - method: DELETE
+        path: /rest/v1/events?id=eq.{eventId}
+        description: Delete event (owner or admin)
+        auth_required: true
+        response_schema:
+          "204": Deleted
+          "403": Not authorized
+    depends_on:
+      - Authentication API
+  - name: Event Participants API
+    description: Manage event join/leave and check-in status
+    files:
+      - database.ts
+      - pages/EventDetail.tsx
+      - pages/CheckInPage.tsx
+    endpoints:
+      - method: GET
+        path: /rest/v1/event_participants?event_id=eq.{eventId}
+        description: List participants of an event
+        auth_required: false
+        response_schema:
+          "200": EventParticipant[]
+      - method: POST
+        path: /rest/v1/event_participants
+        description: Join an event (add participation record)
+        auth_required: true
+        request_schema:
+          body:
+            event_id: string UUID
+            user_id: string UUID
+            checked_in: false
+        response_schema:
+          "201": EventParticipant
+          "409": Already joined (duplicate)
+      - method: PATCH
+        path: /rest/v1/event_participants?event_id=eq.{eventId}&user_id=eq.{userId}
+        description: Mark user as checked in (QR scan)
+        auth_required: true
+        request_schema:
+          body:
+            checked_in: true
+        response_schema:
+          "200": Updated record
+      - method: DELETE
+        path: /rest/v1/event_participants?event_id=eq.{eventId}&user_id=eq.{userId}
+        description: Leave an event
+        auth_required: true
+        response_schema:
+          "204": Deleted
+    depends_on:
+      - Authentication API
+      - Events API
+  - name: Comments API
+    description: Threaded comments on events (top-level and replies)
+    files:
+      - database.ts
+      - pages/EventDetail.tsx
+    endpoints:
+      - method: GET
+        path: /rest/v1/comments?event_id=eq.{eventId}&order=created_at.asc
+        description: Get all comments for an event including nested replies
+        auth_required: false
+        response_schema:
+          "200": Comment[]
+      - method: POST
+        path: /rest/v1/comments
+        description: Post a new comment or reply on an event
+        auth_required: true
+        request_schema:
+          body:
+            event_id: string UUID
+            user_id: string UUID
+            text: string (non-empty)
+            parent_comment_id: string UUID (optional, for replies)
+        response_schema:
+          "201": Comment
+          "401": Unauthorized
+      - method: DELETE
+        path: /rest/v1/comments?id=eq.{commentId}
+        description: Delete a comment (own comments only, or admin)
+        auth_required: true
+        response_schema:
+          "204": Deleted
+          "403": Not owner (RLS)
+    depends_on:
+      - Authentication API
+      - Events API
+  - name: Friends API
+    description: Unidirectional follow/friend system
+    files:
+      - database.ts
+      - pages/Friends.tsx
+      - pages/Users.tsx
+    endpoints:
+      - method: GET
+        path: /rest/v1/friends?user_id=eq.{userId}
+        description: Get list of users that userId is following
+        auth_required: true
+        response_schema:
+          "200": Friend[]
+      - method: POST
+        path: /rest/v1/friends
+        description: Follow a user (add friendship record)
+        auth_required: true
+        request_schema:
+          body:
+            user_id: string UUID (follower)
+            friend_id: string UUID (followee)
+        response_schema:
+          "201": Friend record
+          "409": Already following
+      - method: DELETE
+        path: /rest/v1/friends?user_id=eq.{userId}&friend_id=eq.{friendId}
+        description: Unfollow a user
+        auth_required: true
+        response_schema:
+          "204": Deleted
+    depends_on:
+      - Authentication API
+      - Users API
+  - name: Notifications API
+    description: In-app notifications for friend requests, event joins, and comments
+    files:
+      - database.ts
+      - components/Navbar.tsx
+    endpoints:
+      - method: GET
+        path: /rest/v1/notifications?user_id=eq.{userId}&order=created_at.desc&limit=20
+        description: List last 20 notifications for a user
+        auth_required: true
+        response_schema:
+          "200": Notification[]
+      - method: PATCH
+        path: /rest/v1/notifications?id=eq.{notificationId}
+        description: Mark a single notification as read
+        auth_required: true
+        request_schema:
+          body:
+            read: true
+        response_schema:
+          "200": Updated notification
+      - method: PATCH
+        path: /rest/v1/notifications?user_id=eq.{userId}&read=eq.false
+        description: Mark all unread notifications as read
+        auth_required: true
+        request_schema:
+          body:
+            read: true
+        response_schema:
+          "200": Updated notifications
+    depends_on:
+      - Authentication API
+  - name: CMS Pages API
+    description: Content management for dynamic pages
+    files:
+      - database.ts
+      - pages/CMSPageView.tsx
+      - pages/admin/AdminPages.tsx
+      - pages/admin/PageEditor.tsx
+    endpoints:
+      - method: GET
+        path: /rest/v1/cms_pages?is_published=eq.true
+        description: List all published CMS pages
+        auth_required: false
+        response_schema:
+          "200": CMSPage[]
+      - method: GET
+        path: /rest/v1/cms_pages?slug=eq.{slug}
+        description: Get a CMS page by slug
+        auth_required: false
+        response_schema:
+          "200": CMSPage or null
+      - method: POST
+        path: /rest/v1/cms_pages
+        description: Create a new CMS page (admin only, enforced by RLS)
+        auth_required: true
+        request_schema:
+          body:
+            slug: string (unique)
+            title: string
+            is_published: boolean
+            created_by: string UUID
+        response_schema:
+          "201": CMSPage
+          "409": Slug already exists
+          "403": Not admin
+      - method: PATCH
+        path: /rest/v1/cms_pages?id=eq.{pageId}
+        description: Update a CMS page (admin only)
+        auth_required: true
+        response_schema:
+          "200": Updated CMSPage
+          "403": Not admin
+      - method: DELETE
+        path: /rest/v1/cms_pages?id=eq.{pageId}
+        description: Delete a CMS page (admin only)
+        auth_required: true
+        response_schema:
+          "204": Deleted
+          "403": Not admin
+    depends_on:
+      - Authentication API
+  - name: Admin - User Ban API
+    description: Admin operations to ban and unban users
+    files:
+      - database.ts
+      - pages/admin/AdminBans.tsx
+      - pages/admin/AdminUsers.tsx
+    endpoints:
+      - method: PATCH
+        path: /rest/v1/users?id=eq.{userId}
+        description: Ban a user (set is_banned=true, ban_reason, banned_at)
+        auth_required: true
+        request_schema:
+          body:
+            is_banned: true
+            ban_reason: string
+            banned_at: string ISO date
+        response_schema:
+          "200": Updated user
+          "403": Not admin
+      - method: PATCH
+        path: /rest/v1/users?id=eq.{userId}
+        description: Unban a user (set is_banned=false)
+        auth_required: true
+        request_schema:
+          body:
+            is_banned: false
+            ban_reason: null
+        response_schema:
+          "200": Updated user
+    depends_on:
+      - Authentication API
+  - name: File Storage API
+    description: Upload and manage avatar and gallery images via Supabase Storage
+    files:
+      - lib/supabase.ts
+      - pages/Profile.tsx
+      - pages/EventDetail.tsx
+    endpoints:
+      - method: POST
+        path: /storage/v1/object/avatars/{filename}
+        description: Upload user avatar image (max 2MB, compressed to 500x500)
+        auth_required: true
+        request_schema:
+          body: Binary image file
+        response_schema:
+          "200": "{Key: storage path}"
+          "400": File too large or invalid type
+      - method: POST
+        path: /storage/v1/object/gallery/{filename}
+        description: Upload event gallery photo
+        auth_required: true
+        response_schema:
+          "200": "{Key: storage path}"
+      - method: DELETE
+        path: /storage/v1/object/avatars/{filename}
+        description: Delete old avatar when uploading new one
+        auth_required: true
+        response_schema:
+          "200": Deleted
+    depends_on:
+      - Authentication API
+  - name: Vibe Score API
+    description: Calculate and update user vibe scores based on activity
+    files:
+      - database.ts
+      - pages/Vibeler.tsx
+    endpoints:
+      - method: GET
+        path: /rest/v1/users?select=id,username,vibeScore&order=vibeScore.desc
+        description: Get leaderboard - all users sorted by vibe score
+        auth_required: false
+        response_schema:
+          "200": "{id, username, vibeScore}[]"
+      - method: PATCH
+        path: /rest/v1/users?id=eq.{userId}
+        description: Update vibe score (time spent, events created/joined, check-ins)
+        auth_required: true
+        request_schema:
+          body:
+            vibeScore: number
+            timeSpent: number (minutes)
+        response_schema:
+          "200": Updated user
+    depends_on:
+      - Authentication API
+known_limitations:
+  - issue: Daily vibe limit (3/day) is enforced only client-side, not with a database trigger or RLS policy
+    location: database.ts checkDailyVibeLimit
+    impact: A determined user could bypass the limit by calling Supabase REST API directly
+  - issue: Admin access is controlled by localStorage (silius_admin_auth=true), not server-side role check for some operations
+    location: lib/supabase.ts getAdminClient
+    impact: Admin writes rely on service role key being present; localStorage-only check can be bypassed
+  - issue: Comment text length has no server-side maximum length constraint
+    location: database.ts saveComment
+    impact: Excessively long comments could be submitted
+  - issue: No rate limiting on authentication endpoints beyond Supabase defaults
+    location: lib/supabase.ts
+    impact: Brute force attacks limited only by Supabase built-in protections
+  - issue: Event image_url field accepts any URL without server-side validation (SSRF risk)
+    location: database.ts saveEvent
+    impact: Could potentially be used to reference internal resources by URL

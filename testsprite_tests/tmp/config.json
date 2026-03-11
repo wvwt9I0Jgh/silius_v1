@@ -1,0 +1,19 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:4174",
+  "backendAuthType": "public",
+  "executionArgs": {
+    "projectName": "silius-community-platform",
+    "projectPath": "c:\\Users\\DENİZ\\Desktop\\silius-community-platform",
+    "testIds": [],
+    "additionalInstruction": "The backend is a Supabase project. The local proxy at http://localhost:4174 forwards all requests to https://uxmdcaxeotyzhuhqnzpd.supabase.co. All API calls must use http://localhost:4174 as the base URL.\n\nSupabase credentials:\n- URL: http://localhost:4174\n- Anon Key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4bWRjYXhlb3R5emh1aHFuenBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2NTEzMTYsImV4cCI6MjA4MjIyNzMxNn0.vkxQal7hRGwafrtGBgCluiRiDejUcvQhyG8jjym97rc\n\nHeaders required for all requests:\n- apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4bWRjYXhlb3R5emh1aHFuenBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2NTEzMTYsImV4cCI6MjA4MjIyNzMxNn0.vkxQal7hRGwafrtGBgCluiRiDejUcvQhyG8jjym97rc\n- Content-Type: application/json\n\nFor auth endpoints use: http://localhost:4174/auth/v1/\nFor REST endpoints use: http://localhost:4174/rest/v1/\nFor storage endpoints use: http://localhost:4174/storage/v1/\n\nExisting test user: atakan0909xxnxx@gmail.com / aaaaaa\n\nAuth flow: \n1. POST http://localhost:4174/auth/v1/token?grant_type=password with {\"email\":\"atakan0909xxnxx@gmail.com\",\"password\":\"aaaaaa\"}\n2. Use the returned access_token as Bearer token for authenticated requests: Authorization: Bearer {access_token}\n\nFor signup tests, use a random unique email like test_TIMESTAMP@example.com to avoid conflicts.\n\nFor REST API calls, Supabase PostgREST requires:\n- Prefer: return=representation (for INSERT/UPDATE to return data)\n- For filtering: use query params like ?id=eq.{id}\n\nDo NOT use Supabase JS client library - use raw fetch/axios/http calls directly to the proxy endpoints.",
+    "serverMode": "production",
+    "envs": {
+      "API_KEY": "sk-user-4r0oZ71mTJLLtOhstdkXU6moTvqLjUuR3nh8t4ZRujyMSZTqfsHD8PgACfk0_j8ENDoiVWzgp7fwrP4laXlBqqaJXy5m01jTQMAaQnw3PXIEQW-jMEsSG7KNQlTlnbgAmeY"
+    }
+  },
+  "serverPort": 62741,
+  "proxy": "http://3df7eaa6-2fef-4dfa-9501-16243b269c22:kFLvuoHVNrDsoBzAGsPLuhyj1MbHQimZ@tun.testsprite.com:8080"
+}

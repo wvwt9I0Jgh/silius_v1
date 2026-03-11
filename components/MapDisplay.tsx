@@ -2,7 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, ExternalLink, Navigation } from 'lucide-react';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-const isValidApiKey = GOOGLE_MAPS_API_KEY && !GOOGLE_MAPS_API_KEY.includes('YOUR_') && GOOGLE_MAPS_API_KEY.length > 10;
+const isValidApiKey = GOOGLE_MAPS_API_KEY &&
+  !GOOGLE_MAPS_API_KEY.toLowerCase().includes('your') &&
+  GOOGLE_MAPS_API_KEY.startsWith('AIza') &&
+  GOOGLE_MAPS_API_KEY.length > 20;
 
 interface MapDisplayProps {
   latitude: number;

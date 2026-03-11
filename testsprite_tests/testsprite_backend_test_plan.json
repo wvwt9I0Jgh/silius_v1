@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "verify secure user signup with kvkk consent enforcement",
+    "description": "Test the POST /auth/v1/signup endpoint to ensure that user signup requires kvkkConsent to be true and returns appropriate errors when missing or false."
+  },
+  {
+    "id": "TC002",
+    "title": "validate user login and session token retrieval",
+    "description": "Test the POST /auth/v1/token endpoint for successful login with valid credentials and proper error response for invalid credentials."
+  },
+  {
+    "id": "TC003",
+    "title": "fetch authenticated user details with valid token",
+    "description": "Test the GET /auth/v1/user endpoint to retrieve authenticated user details using a valid session token and verify authorization enforcement."
+  },
+  {
+    "id": "TC004",
+    "title": "fetch and update user profile with authorization",
+    "description": "Test GET and PATCH /rest/v1/users endpoints to fetch and update user profile data with valid authorization and validate error handling for unauthorized or invalid requests."
+  },
+  {
+    "id": "TC005",
+    "title": "enforce daily event creation limit and event management authorization",
+    "description": "Test POST /rest/v1/events to create events respecting daily limits, GET /rest/v1/events for filtering and sorting, and PATCH /rest/v1/events to ensure only owners can update events."
+  },
+  {
+    "id": "TC006",
+    "title": "manage event participation and prevent duplicates",
+    "description": "Test POST and DELETE /rest/v1/event_participants for joining and leaving events, including handling duplicate participation attempts."
+  },
+  {
+    "id": "TC007",
+    "title": "perform qr check-in with authorization",
+    "description": "Test POST /rest/v1/event_checkins endpoint to perform QR code check-ins with valid authorization and verify unauthorized access is rejected."
+  },
+  {
+    "id": "TC008",
+    "title": "add and retrieve nested comments with validation",
+    "description": "Test POST /rest/v1/comments for adding comments and replies, including validation of parent_comment_id, and GET /rest/v1/comments to retrieve comments with nested replies."
+  },
+  {
+    "id": "TC009",
+    "title": "manage unidirectional friend relationships with validation",
+    "description": "Test POST and DELETE /rest/v1/friends endpoints to add and remove friends, handle duplicate friendships, and validate friend_id format."
+  },
+  {
+    "id": "TC010",
+    "title": "retrieve and mark notifications with authorization",
+    "description": "Test GET and PATCH /rest/v1/notifications endpoints to retrieve recent notifications and mark them as read, including handling unauthorized access and non-existent notification ids."
+  }
+]

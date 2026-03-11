@@ -25,6 +25,8 @@ export const DISTRICTS: District[] = [
   { id: 'ortaca', name: 'Ortaca', label: 'Ortaca' },
   { id: 'mugla-merkez', name: 'Muğla Merkez / Kötekli', label: 'Muğla Merkez / Kötekli' },
   { id: 'fethiye', name: 'Fethiye', label: 'Fethiye' },
+  { id: 'bodrum', name: 'Bodrum', label: 'Bodrum' },
+  { id: 'marmaris', name: 'Marmaris', label: 'Marmaris' },
 ];
 
 export const VENUES: Venue[] = [
@@ -120,6 +122,9 @@ export const VENUES: Venue[] = [
   { id: 'cof-dal-4', name: "G'10 Coffee", address: 'Mehmet Akif Ersoy Cad No:22/A, Dalaman', district: 'dalaman', lat: 36.7632691, lng: 28.8030548, rating: '4.5', reviewCount: '310', type: 'Kahve Dükkanı', priceRange: '₺100–200' },
   { id: 'cof-dal-5', name: 'Heffalump Coffee Dalaman', address: 'Mehmet Akif Ersoy Cad. No:30 A, Dalaman', district: 'dalaman', lat: 36.7622621, lng: 28.8029652, rating: '5.0', reviewCount: '13', type: 'Kahve Dükkanı', priceRange: '₺100–200' },
 
+  // --- Dalaman Sahil ---
+  { id: 'beach-dal-1', name: 'Dalaman Plajı', address: 'Ege, 48770 Dalaman', district: 'dalaman', lat: 36.6957948, lng: 28.7640547, rating: '3.9', reviewCount: '82', type: 'Kumsal', priceRange: 'Ücretsiz' },
+
   // --- Ortaca / Dalyan Kahve Dükkanları ---
   { id: 'cof-ort-1', name: 'Dal Coffee / Sinek 8', address: 'Maraş Cd. No:8, Dalyan/Ortaca', district: 'ortaca', lat: 36.8337649, lng: 28.6417752, rating: '5.0', reviewCount: '75', type: 'Kahve Dükkanı', priceRange: '₺100–200' },
   { id: 'cof-ort-2', name: 'No 8 ART & DESIGN CAFE', address: 'Maraş Cd. No:18, Dalyan/Ortaca', district: 'ortaca', lat: 36.8337853, lng: 28.641839, rating: '4.5', reviewCount: '82', type: 'Kahve Dükkanı', priceRange: '₺200–400' },
@@ -148,6 +153,81 @@ export const VENUES: Venue[] = [
   { id: 'cof-fet-7', name: 'Chemex Coffee Fethiye', address: '93. Sk No:2, Paspatur/Fethiye', district: 'fethiye', lat: 36.6212114, lng: 29.1095856, rating: '4.4', reviewCount: '108', type: 'Kahve Dükkanı', priceRange: '₺200–400' },
   { id: 'cof-fet-8', name: 'Cofhilus Social House', address: 'Tuzla Mah. Cahit Gündüz Cad. No:18, Fethiye', district: 'fethiye', lat: 36.6289812, lng: 29.1177265, rating: '4.5', reviewCount: '222', type: 'Kahve Dükkanı', priceRange: '₺200–400' },
   { id: 'cof-fet-9', name: '2MB Sole Coffee & Eatery', address: 'Cahit Gündüz Cd. No:100/1, Fethiye', district: 'fethiye', lat: 36.6432797, lng: 29.1216506, rating: '4.8', reviewCount: '208', type: 'Kahve Dükkanı', priceRange: '₺200–400' },
+
+  // --- Fethiye Sahil & Beach ---
+  { id: 'beach-fet-1', name: 'Çalış Plajı', address: 'Çalış, Fethiye', district: 'fethiye', lat: 36.6690608, lng: 29.1040858, rating: '4.0', reviewCount: '3993', type: 'Kumsal', priceRange: 'Ücretsiz' },
+  { id: 'beach-fet-2', name: 'Fethiye Sahil', address: 'Cahit Gündüz Cd. No:19, Fethiye', district: 'fethiye', lat: 36.6395332, lng: 29.1212086, rating: '4.6', reviewCount: '1812', type: 'Kumsal', priceRange: 'Ücretsiz' },
+  { id: 'beach-fet-3', name: 'Help Beach', address: 'Fethiye', district: 'fethiye', lat: 36.6211225, lng: 29.0798389, rating: '3.9', reviewCount: '349', type: 'Beach Club', priceRange: '₺200–400' },
+  { id: 'beach-fet-4', name: 'Küçük Samanlık Plajı', address: 'Fethiye', district: 'fethiye', lat: 36.6438025, lng: 29.0907693, rating: '4.0', reviewCount: '1306', type: 'Kumsal', priceRange: 'Ücretsiz' },
+  { id: 'beach-fet-5', name: 'İnlice Halk Plajı', address: 'İnlice, Fethiye', district: 'fethiye', lat: 36.7308491, lng: 28.9670494, rating: '4.2', reviewCount: '4403', type: 'Kumsal', priceRange: 'Ücretsiz' },
+
+  // ==================== BODRUM ====================
+  { id: 'bod-1', name: 'Marina Yacht Club Bodrum', address: 'Neyzen Tevfik Cd. No:5, Bodrum', district: 'bodrum', lat: 37.0341331, lng: 27.4223303, rating: '4.5', reviewCount: '3367', type: 'Bar', priceRange: '₺2.000+' },
+  { id: 'bod-2', name: 'Deep Sea Pub', address: 'Taşlık Sk. No:7, Bodrum', district: 'bodrum', lat: 37.0333787, lng: 27.4312646, rating: '4.6', reviewCount: '190', type: 'Pub', priceRange: '₺300–500' },
+  { id: 'bod-3', name: 'Yula Bodrum - Drink & Chill', address: 'Uslu Sk. No:54/A, Bodrum', district: 'bodrum', lat: 37.0333194, lng: 27.4335676, rating: '4.2', reviewCount: '1736', type: 'Kokteyl Bar', priceRange: '₺400–600' },
+  { id: 'bod-4', name: 'Tunnel Bodrum', address: 'Cumhuriyet Cd. No:84 D, Bodrum', district: 'bodrum', lat: 37.0330449, lng: 27.4347238, rating: '4.5', reviewCount: '431', type: 'Pub', priceRange: '₺600–800' },
+  { id: 'bod-5', name: 'Kule Rock City Bar', address: 'Çarşı Mh Cumhuriyet Cd., Barlar Sokağı No:55, Bodrum', district: 'bodrum', lat: 37.0336224, lng: 27.433267, rating: '4.2', reviewCount: '1279', type: 'Bar', priceRange: '₺400–600' },
+  { id: 'bod-6', name: 'Afilli Bar Bodrum', address: 'Çarşı Mah. Cumhuriyet Cd., Meydan Sk. No:8/A, Bodrum', district: 'bodrum', lat: 37.0359751, lng: 27.4327557, rating: '3.4', reviewCount: '47', type: 'Bar', priceRange: '₺1.000+' },
+  { id: 'bod-7', name: 'Divan Pub Bodrum', address: 'Neyzen Tevfik Cd. No:5, Bodrum', district: 'bodrum', lat: 37.0353515, lng: 27.4230792, rating: '4.4', reviewCount: '154', type: 'Pub', priceRange: '₺1.000+' },
+
+  // --- Bodrum Gece Kulüpleri ---
+  { id: 'bod-8', name: 'Adamik', address: 'Meyhane Sok No:23, Bodrum', district: 'bodrum', lat: 37.0331342, lng: 27.4302051, rating: '4.7', reviewCount: '61', type: 'Gece kulübü', priceRange: '₺700–800' },
+  { id: 'bod-9', name: 'Sapphire Gece Klübü', address: 'Yarbay Sabri Ergüden Sk. No:8, Bodrum', district: 'bodrum', lat: 37.0338604, lng: 27.4018075, rating: '3.5', reviewCount: '284', type: 'Gece kulübü', priceRange: '₺1.000+' },
+  { id: 'bod-10', name: 'Catamaran Club Bodrum', address: '1025. Sk. No:12, Bodrum', district: 'bodrum', lat: 37.0327505, lng: 27.430967, rating: '4.1', reviewCount: '195', type: 'Gece kulübü', priceRange: '₺1.000+' },
+  { id: 'bod-11', name: 'WI CLUB BODRUM', address: 'Neyzen Tevfik Cd. No:60/B, Bodrum', district: 'bodrum', lat: 37.0363997, lng: 27.4271797, rating: '2.7', reviewCount: '75', type: 'Gece kulübü', priceRange: '₺1.000+' },
+  { id: 'bod-12', name: 'Mandalin', address: 'Dr. Alim Bey Cd. 1025. Sokak, Bodrum', district: 'bodrum', lat: 37.032858, lng: 27.4308024, rating: '4.0', reviewCount: '831', type: 'Gece kulübü', priceRange: '₺1.000+' },
+  { id: 'bod-13', name: 'BARREL BEER HOUSE', address: 'Atatürk Cd. No:90, Bodrum', district: 'bodrum', lat: 37.0328796, lng: 27.4379852, rating: '4.9', reviewCount: '73', type: 'Pub', priceRange: '₺100–200' },
+  { id: 'bod-14', name: 'Gara Pub', address: 'Çarşı Mah. M. Hilmi Konday Sok No:8, Bodrum', district: 'bodrum', lat: 37.0337994, lng: 27.4301452, rating: '4.7', reviewCount: '224', type: 'Pub', priceRange: '₺600–800' },
+  { id: 'bod-15', name: 'The Irish Pub by Vittoria', address: 'Cevat Şakir Cd. No:4, Bodrum', district: 'bodrum', lat: 37.0347823, lng: 27.4312581, rating: '4.1', reviewCount: '23', type: 'Bar', priceRange: '₺400–600' },
+  { id: 'bod-16', name: 'HOT PUB', address: 'Eski Hükümet Sk. No:22, Bodrum', district: 'bodrum', lat: 37.0353651, lng: 27.4311413, rating: '4.9', reviewCount: '90', type: 'Pub', priceRange: '₺100–200' },
+
+  // --- Bodrum Kahve Dükkanları ---
+  { id: 'cof-bod-1', name: 'Cafe Chives', address: 'Cafer Paşa Cd. No:57/A, Bodrum', district: 'bodrum', lat: 37.036625, lng: 27.414537, rating: '4.8', reviewCount: '914', type: 'Kafe', priceRange: '₺200–400' },
+  { id: 'cof-bod-2', name: 'Coffee LAB Bodrum', address: 'Neyzen Tevfik Cd. No:52, Bodrum', district: 'bodrum', lat: 37.0363305, lng: 27.427586, rating: '3.9', reviewCount: '122', type: 'Kahve Dükkanı', priceRange: '₺100–200' },
+  { id: 'cof-bod-3', name: 'New Zealand Coffee House', address: 'Hacı Resul Sk. No:11A/B, Bodrum', district: 'bodrum', lat: 37.0395079, lng: 27.4320347, rating: '4.9', reviewCount: '157', type: 'Kahve Dükkanı', priceRange: '₺100–200' },
+  { id: 'cof-bod-4', name: 'Kahve Dünyası - Bodrum Marina', address: 'Marina Çarşısı, Neyzen Tevfik Cd., Bodrum', district: 'bodrum', lat: 37.034743, lng: 27.421911, rating: '4.0', reviewCount: '976', type: 'Kahve Dükkanı', priceRange: '₺200–400' },
+  { id: 'cof-bod-5', name: "Madam'ın Kahvesi Bodrum", address: '1013. Sk. 8/A, Bodrum', district: 'bodrum', lat: 37.0339554, lng: 27.4345394, rating: '4.8', reviewCount: '38', type: 'Kafe', priceRange: '₺100–200' },
+  { id: 'cof-bod-6', name: 'Gibi Bodrum', address: 'Neyzen Tevfik Cd. No:98, Bodrum', district: 'bodrum', lat: 37.0365157, lng: 27.4244742, rating: '4.3', reviewCount: '528', type: 'Kafe', priceRange: '₺200–400' },
+  { id: 'cof-bod-7', name: 'Mahfel Cafe', address: 'Çarşı Mah., Bodrum', district: 'bodrum', lat: 37.0332841, lng: 27.4341402, rating: '4.4', reviewCount: '2944', type: 'Kafe', priceRange: '₺200–400' },
+
+  // --- Bodrum Sahil & Beach Club ---
+  { id: 'beach-bod-1', name: 'Sarnıç Beach Club', address: 'Çökertme Cd. No:23, Bodrum', district: 'bodrum', lat: 37.0242991, lng: 27.3739704, rating: '4.1', reviewCount: '550', type: 'Beach Club', priceRange: '₺400–800' },
+  { id: 'beach-bod-2', name: 'Bi Beach Club', address: 'Gümbet, Bodrum', district: 'bodrum', lat: 37.029329, lng: 27.4202264, rating: '3.5', reviewCount: '120', type: 'Beach Club', priceRange: '₺400–600' },
+  { id: 'beach-bod-3', name: 'Maja Beach Club', address: 'Ayaz Cd. No:6, Bodrum', district: 'bodrum', lat: 37.0323416, lng: 27.402187, rating: '4.1', reviewCount: '20', type: 'Beach Club', priceRange: '₺400–800' },
+  { id: 'beach-bod-4', name: 'The Millionaires Beach Club', address: 'Zengin Hüseyin Sk. No:9, Bodrum', district: 'bodrum', lat: 37.0320679, lng: 27.4011334, rating: '4.6', reviewCount: '39', type: 'Beach Club', priceRange: '₺1.000+' },
+  { id: 'beach-bod-5', name: 'Bodrum Plajı', address: 'Bodrum Merkez', district: 'bodrum', lat: 37.0288617, lng: 27.4403418, rating: '4.1', reviewCount: '539', type: 'Kumsal', priceRange: 'Ücretsiz' },
+  { id: 'beach-bod-6', name: 'Bodrum Belediyesi Halk Plajı', address: 'Atatürk Cd. No:151, Bodrum', district: 'bodrum', lat: 37.084677, lng: 27.456471, rating: '4.1', reviewCount: '782', type: 'Kumsal', priceRange: 'Ücretsiz' },
+  { id: 'beach-bod-7', name: 'Deve Plajı (Camel Beach)', address: 'Ortakent, Bodrum', district: 'bodrum', lat: 37.0138189, lng: 27.3300755, rating: '4.2', reviewCount: '2754', type: 'Kumsal', priceRange: 'Ücretsiz' },
+  { id: 'beach-bod-8', name: 'Yahşi Plajı', address: 'Ortakent-Yahşi, Bodrum', district: 'bodrum', lat: 37.0194268, lng: 27.3412961, rating: '4.4', reviewCount: '1892', type: 'Kumsal', priceRange: 'Ücretsiz' },
+
+  // ==================== MARMARİS ====================
+  { id: 'mar-1', name: 'Tigers Tavern Beach Club', address: '207. Sk. No:80, Marmaris', district: 'marmaris', lat: 36.8447422, lng: 28.2570652, rating: '3.7', reviewCount: '166', type: 'Gece kulübü', priceRange: '₺400–800' },
+  { id: 'mar-2', name: 'Barlar Sokağı', address: '35. Sk. No:18, Marmaris', district: 'marmaris', lat: 36.852999, lng: 28.2759044, rating: '4.2', reviewCount: '255', type: 'Bar', priceRange: '₺1.000+' },
+  { id: 'mar-3', name: 'Alice Marmaris', address: 'Barbaros Cd. No:209, Marmaris', district: 'marmaris', lat: 36.8525613, lng: 28.275754, rating: '4.8', reviewCount: '147', type: 'Kokteyl Bar', priceRange: '₺600–800' },
+  { id: 'mar-4', name: 'Brits Pub', address: 'Seyfettin Elgin Bulvarı No:27, Marmaris', district: 'marmaris', lat: 36.8475572, lng: 28.2592979, rating: '4.7', reviewCount: '320', type: 'Bar', priceRange: '₺300–500' },
+  { id: 'mar-5', name: 'IBROX BAR', address: '205. Sk. 88/1, Marmaris', district: 'marmaris', lat: 36.8449116, lng: 28.2566146, rating: '4.5', reviewCount: '361', type: 'Bar', priceRange: '₺200–400' },
+  { id: 'mar-6', name: 'Green House Night Club', address: 'Barlar Sokağı, Marmaris', district: 'marmaris', lat: 36.8530102, lng: 28.2757726, rating: '3.8', reviewCount: '234', type: 'Gece kulübü', priceRange: '₺1.000+' },
+  { id: 'mar-7', name: "Roxy's Show Bar", address: 'Barbaros Cd. No:24, İçmeler/Marmaris', district: 'marmaris', lat: 36.8290505, lng: 28.2430421, rating: '4.4', reviewCount: '103', type: 'Bar', priceRange: '₺200–400' },
+  { id: 'mar-8', name: 'Pop İn Bar Marmaris', address: 'Cumhuriyet Blv. 266. Sk. No:40/12, Marmaris', district: 'marmaris', lat: 36.8352793, lng: 28.2454048, rating: '4.8', reviewCount: '38', type: 'Bar', priceRange: '₺200–400' },
+  { id: 'mar-9', name: 'Anfield Bar', address: '203. Sk., Marmaris', district: 'marmaris', lat: 36.8451688, lng: 28.2564863, rating: '4.4', reviewCount: '179', type: 'Bar', priceRange: '₺100–200' },
+  { id: 'mar-10', name: 'PARKHEAD BAR MARMARIS', address: 'Adnan Menderes Cd. No:14/1, Marmaris', district: 'marmaris', lat: 36.8553899, lng: 28.252715, rating: '4.5', reviewCount: '157', type: 'Bar', priceRange: '₺100–200' },
+
+  // --- Marmaris Kahve Dükkanları ---
+  { id: 'cof-mar-1', name: 'Books & Coffee Marmaris', address: 'Barbaros Cd. No:203, Marmaris', district: 'marmaris', lat: 36.8524504, lng: 28.2756915, rating: '4.9', reviewCount: '548', type: 'Kahve Dükkanı', priceRange: '₺200–400' },
+  { id: 'cof-mar-2', name: 'Marmaris Çarşı Kahve Dükkanı', address: '38. Sk. No:39, Marmaris', district: 'marmaris', lat: 36.8534317, lng: 28.2735028, rating: '4.8', reviewCount: '67', type: 'Kahve Dükkanı', priceRange: '₺100–200' },
+  { id: 'cof-mar-3', name: 'Fredonia Coffee', address: 'Barbaros Cd. Yat Limanı No:1, Marmaris', district: 'marmaris', lat: 36.851131, lng: 28.273456, rating: '4.3', reviewCount: '1158', type: 'Kahve Dükkanı', priceRange: '₺200–400' },
+  { id: 'cof-mar-4', name: 'Artukbey Coffee Shop', address: 'Barbaros Cd. No:57, Marmaris', district: 'marmaris', lat: 36.8498656, lng: 28.2743813, rating: '4.3', reviewCount: '281', type: 'Kahve Dükkanı', priceRange: '₺200–400' },
+  { id: 'cof-mar-5', name: 'AVLU Coffee, Etc.', address: 'Cumhuriyet Blv. No:24, Marmaris', district: 'marmaris', lat: 36.8366019, lng: 28.2465189, rating: '5.0', reviewCount: '83', type: 'Kahve Dükkanı', priceRange: '₺100–200' },
+  { id: 'cof-mar-6', name: 'Kahve Dünyası - Marmaris Marina', address: 'Marmaris Marina Gönlücek Yolu, Marmaris', district: 'marmaris', lat: 36.8537966, lng: 28.2780432, rating: '4.3', reviewCount: '1930', type: 'Kahve Dükkanı', priceRange: '₺200–400' },
+
+  // --- Marmaris Sahil & Beach Club ---
+  { id: 'beach-mar-1', name: 'Yali Beach Club', address: '207. Sk., Marmaris', district: 'marmaris', lat: 36.845997, lng: 28.2584528, rating: '4.5', reviewCount: '243', type: 'Beach Club', priceRange: '₺400–800' },
+  { id: 'beach-mar-2', name: 'Aida Beach Marmaris', address: '207. Sk. No:50, Marmaris', district: 'marmaris', lat: 36.8464649, lng: 28.2592564, rating: '4.7', reviewCount: '564', type: 'Beach Club', priceRange: '₺400–800' },
+  { id: 'beach-mar-3', name: 'Marmaris Halk Plajı', address: '105. Sk. No:23, Marmaris', district: 'marmaris', lat: 36.8511878, lng: 28.2659311, rating: '4.1', reviewCount: '3442', type: 'Kumsal', priceRange: 'Ücretsiz' },
+  { id: 'beach-mar-4', name: 'Marmaris Uzunyalı Plajı', address: 'Atatürk Cd. No:28, Marmaris', district: 'marmaris', lat: 36.850977, lng: 28.2652192, rating: '4.3', reviewCount: '289', type: 'Kumsal', priceRange: 'Ücretsiz' },
+  { id: 'beach-mar-5', name: 'İçmeler Plajı', address: 'İçmeler, Marmaris', district: 'marmaris', lat: 36.8034428, lng: 28.2338791, rating: '4.3', reviewCount: '5997', type: 'Kumsal', priceRange: 'Ücretsiz' },
+  { id: 'beach-mar-6', name: 'Turunç Plajı', address: 'Turunç, Marmaris', district: 'marmaris', lat: 36.7758993, lng: 28.2486914, rating: '4.3', reviewCount: '1304', type: 'Kumsal', priceRange: 'Ücretsiz' },
+  { id: 'beach-mar-7', name: 'Kızkumu Plajı', address: 'Bozburun Yolu, Marmaris', district: 'marmaris', lat: 36.7592818, lng: 28.1304396, rating: '4.3', reviewCount: '8344', type: 'Kumsal', priceRange: 'Ücretsiz' },
 ];
 
 // İlçeye göre mekanları getir

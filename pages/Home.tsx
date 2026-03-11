@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../database';
 import { Event, User } from '../types';
-import { Plus, MapPin, Calendar, Search, Zap, X, TrendingUp, Sparkles, Image as ImageIcon, Camera, Loader2, ArrowRight, Music, Waves, Home as HomeIcon, Footprints, PartyPopper, Beer, Coffee } from 'lucide-react';
+import { Plus, MapPin, Calendar, Search, Zap, X, TrendingUp, Sparkles, Image as ImageIcon, Camera, Loader2, ArrowRight, Music, Waves, Home as HomeIcon, Footprints, PartyPopper, Beer, Coffee, AlertTriangle } from 'lucide-react';
 import LocationPicker from '../components/LocationPicker';
 
 interface HomeProps {
@@ -134,13 +134,15 @@ const Home: React.FC<HomeProps> = ({ user }) => {
           const cachedEvents = JSON.parse(cached);
           setEvents(cachedEvents);
           setIsLoading(false);
-          loadEvents(false);
+          // Arka planda güncelle — ama yeniden loading gösterme
+          setTimeout(() => loadEvents(false), 3000);
           return;
         }
       } catch { }
     }
 
-    setIsLoading(true);
+    // Cache yoksa veya süresi geçmişse yeni veri al — sadece ilk yüklemede loading göster
+    if (useCache) setIsLoading(true);
     try {
       // Get events with owner vibe scores
       let eventsData: Event[] = [];
@@ -192,7 +194,6 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
   useEffect(() => {
     loadEvents();
-    checkVibeLimit(); // Limit kontrolü
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -468,11 +469,16 @@ const Home: React.FC<HomeProps> = ({ user }) => {
             filteredAndSortedEvents.map((event, index) => {
               const catInfo = getCategoryInfo(event.category);
               const isEven = index % 2 === 0;
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const eventDate = new Date(event.date);
+              eventDate.setHours(0, 0, 0, 0);
+              const isExpired = eventDate < today;
               return (
                 <Link
                   key={event.id}
                   to={`/events/${event.id}`}
-                  className="group relative flex flex-col bg-bg-surface border border-white/5 rounded-[2.5rem] overflow-hidden hover:border-fuchsia-500/30 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-fuchsia-500/10"
+                  className={`group relative flex flex-col bg-bg-surface border rounded-[2.5rem] overflow-hidden transition-all duration-500 ${isExpired ? 'border-red-500/30 opacity-70 grayscale-[40%]' : 'border-white/5 hover:border-fuchsia-500/30 hover:-translate-y-2 hover:shadow-2xl hover:shadow-fuchsia-500/10'}`}
                 >
                   {/* Image Container */}
                   <div className="h-64 relative overflow-hidden">
@@ -480,9 +486,20 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                     <img
                       src={event.image}
                       alt={event.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 group-hover:filter group-hover:contrast-125"
+                      className={`w-full h-full object-cover transition-transform duration-700 ${isExpired ? 'grayscale' : 'group-hover:scale-110 group-hover:filter group-hover:contrast-125'}`}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-bg-surface via-transparent to-transparent opacity-80"></div>
+
+                    {/* Devre Dışı overlay */}
+                    {isExpired && (
+                      <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                        <div className="flex flex-col items-center gap-3 px-8 py-5 bg-red-500/20 border-2 border-red-500/50 rounded-3xl backdrop-blur-md">
+                          <AlertTriangle size={32} className="text-red-400" />
+                          <span className="text-red-400 font-black text-xl uppercase tracking-[0.3em]">DEVRE DIŞI</span>
+                          <span className="text-red-300/70 text-[10px] font-bold uppercase tracking-widest">Bu etkinliğin tarihi geçmiştir</span>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="absolute top-4 left-4 z-20">
                       <div className="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 flex items-center gap-2">
@@ -492,7 +509,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                     </div>
 
                     {/* Canlı katılımcı göstergesi */}
-                    {event.liveCount > 0 && (
+                    {event.liveCount > 0 && !isExpired && (
                       <div className="absolute top-4 right-4 z-20">
                         <div className="px-3 py-1.5 bg-green-500/90 backdrop-blur-md rounded-lg border border-green-400/30 flex items-center gap-2 shadow-lg shadow-green-500/30">
                           <span className="relative flex h-2 w-2">

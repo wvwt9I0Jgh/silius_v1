@@ -1,11 +1,14 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../database';
 import { supabase } from '../lib/supabase'; // Import Supabase
 import { Event, Comment, User, EventGalleryPhoto } from '../types';
-import { Calendar, MapPin, Send, ArrowLeft, Heart, MessageSquare, Check, Users as UsersIcon, Share2, Zap, Loader2, Edit3, X, Save, Reply, Pin, Trash2, Sparkles, QrCode, Image as ImageIcon, ChevronLeft, ChevronRight, Camera } from 'lucide-react'; // Add QrCode import
+import { Calendar, MapPin, Send, ArrowLeft, Heart, MessageSquare, Check, Users as UsersIcon, Share2, Zap, Loader2, Edit3, X, Save, Reply, Pin, Trash2, Sparkles, QrCode, Image as ImageIcon, ChevronLeft, ChevronRight, Camera, CheckCircle2, ArrowRight, Radio, AlertTriangle } from 'lucide-react';
 import MapDisplay from '../components/MapDisplay';
+import QRCode from 'react-qr-code';
+import { Html5Qrcode } from 'html5-qrcode';
+import { toast } from 'react-hot-toast';
 
 interface EventDetailProps {
   user: User;
@@ -45,6 +48,23 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
   // Yorum yanıtları
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [commentError, setCommentError] = useState('');
+
+  // QR Scanner & Bilet
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [ticketStatus, setTicketStatus] = useState<'pending' | 'success' | 'already'>('pending');
+  const [pointsEarned, setPointsEarned] = useState(0);
+  const [isProcessingCheckIn, setIsProcessingCheckIn] = useState(false);
+  const qrScannerRef = useRef<Html5Qrcode | null>(null);
+  const scannerContainerRef = useRef<HTMLDivElement>(null);
+
+  // Canlı katılımcı listesi
+  const [liveParticipants, setLiveParticipants] = useState<User[]>([]);
+  const [showLiveBox, setShowLiveBox] = useState(false);
+
+  // Kullanıcının zaten check-in yapıp yapmadığını takip et
+  const [isCheckedIn, setIsCheckedIn] = useState(false);
 
   const loadEventData = async () => {
     if (!id) return;
@@ -77,6 +97,10 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
         const galleryData = await db.getEventGallery(id);
         setGallery(galleryData);
 
+        // Kullanıcının check-in durumunu kontrol et
+        const checkedIn = await db.isUserCheckedIn(id, user.id);
+        setIsCheckedIn(checkedIn);
+
         setComments(commentsData);
         setIsAttending(attending);
         setParticipantCount(count);
@@ -107,6 +131,17 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
                 }
               }
           )
+          .on(
+              'postgres_changes',
+              { event: 'INSERT', schema: 'public', table: 'event_participants', filter: `event_id=eq.${id}` },
+              (payload: any) => {
+                // Yeni katılımcı eklendi ve direkt checked_in ise
+                if (payload.new.checked_in) {
+                  setCheckedInCount(prev => prev + 1);
+                }
+                setParticipantCount(prev => prev + 1);
+              }
+          )
           .subscribe();
 
       }
@@ -126,11 +161,159 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
     setParticipants(participantUsers.filter(Boolean) as User[]);
   };
 
+  // Canlı katılımcıları yükle
+  const loadLiveParticipants = async () => {
+    if (!id) return;
+    try {
+      const { data, error } = await supabase
+        .from('event_participants')
+        .select('user_id')
+        .eq('event_id', id)
+        .eq('checked_in', true);
+      if (error || !data) return;
+      const users = await Promise.all(data.map(p => db.getUserById(p.user_id)));
+      setLiveParticipants(users.filter(Boolean) as User[]);
+    } catch (err) {
+      console.error('Live participants load error:', err);
+    }
+  };
+
+  // QR Scanner başlat
+  const startQRScanner = useCallback(async () => {
+    setShowQRScanner(true);
+    // Scanner'ın DOM'a mount olmasını bekle
+    await new Promise(r => setTimeout(r, 600));
+    
+    const readerElement = document.getElementById('qr-reader');
+    if (!readerElement) {
+      console.error('QR reader element not found');
+      setShowQRScanner(false);
+      return;
+    }
+    
+    try {
+      const scanner = new Html5Qrcode('qr-reader');
+      qrScannerRef.current = scanner;
+      
+      let handled = false;
+      
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          // Zaten işlendiyse tekrar çalışmasın
+          if (handled) return;
+          handled = true;
+          
+          console.log('QR Scanned:', decodedText);
+          
+          // QR code okundu - URL'den eventId çıkar
+          const match = decodedText.match(/(?:checkin|events)\/([a-f0-9A-F-]+)/i);
+          const scannedEventId = match ? match[1].toLowerCase() : null;
+          const currentEventId = id?.toLowerCase();
+          
+          console.log('Scanned ID:', scannedEventId, 'Current ID:', currentEventId);
+          
+          // Scanner'ı SENKRON olarak durdur, sonra state güncelle
+          scanner.stop().then(() => {
+            qrScannerRef.current = null;
+            
+            if (scannedEventId && scannedEventId === currentEventId) {
+              // Doğru etkinlik - bilet göster
+              setShowQRScanner(false);
+              // Küçük gecikme ile ticket modal aç (state batching sorununu önle)
+              setTimeout(() => {
+                setShowTicketModal(true);
+              }, 100);
+            } else if (scannedEventId) {
+              // Farklı bir etkinliğin QR'ı - o etkinliğe yönlendir
+              setShowQRScanner(false);
+              toast.error('Bu QR kod farklı bir etkinliğe ait!');
+            } else {
+              // Tanınmayan QR format
+              setShowQRScanner(false);
+              toast.error('Geçersiz QR kod formatı!');
+            }
+          }).catch(() => {
+            qrScannerRef.current = null;
+            setShowQRScanner(false);
+            
+            if (scannedEventId && scannedEventId === currentEventId) {
+              setTimeout(() => {
+                setShowTicketModal(true);
+              }, 100);
+            }
+          });
+        },
+        () => {} // error callback - her frame'de çağrılır, yoksay
+      );
+    } catch (err) {
+      console.error('QR Scanner error:', err);
+      setShowQRScanner(false);
+      toast.error('Kamera açılamadı. Kamera izni verdiğinizden emin olun.');
+    }
+  }, [id]);
+
+  // QR Scanner'ı durdur
+  const stopQRScanner = useCallback(async () => {
+    if (qrScannerRef.current) {
+      try {
+        await qrScannerRef.current.stop();
+      } catch {}
+      qrScannerRef.current = null;
+    }
+    setShowQRScanner(false);
+  }, []);
+
+  // Canlıya katıl (bilet üzerinden)
+  const handleLiveCheckIn = async () => {
+    if (!event) return;
+    setIsProcessingCheckIn(true);
+    try {
+      const result = await db.checkInToEvent(event.id, user.id);
+      if (result.success) {
+        if (result.points > 0) {
+          setTicketStatus('success');
+          setPointsEarned(result.points);
+          // Canlı sayısını ve katılım durumunu güncelle
+          const updatedCount = await db.getLiveParticipantCount(event.id);
+          setCheckedInCount(updatedCount);
+          setIsAttending(true);
+          setIsCheckedIn(true);
+          const newParticipantCount = await db.getParticipantCount(event.id);
+          setParticipantCount(newParticipantCount);
+          // Canlı katılımcı listesini güncelle
+          await loadLiveParticipants();
+          toast.success(`Canlıya katıldın! +${result.points} Vibe Puanı`);
+        } else {
+          setTicketStatus('already');
+          setIsCheckedIn(true);
+          setIsAttending(true);
+          // Canlı katılımcı listesini güncelle
+          const updatedCount = await db.getLiveParticipantCount(event.id);
+          setCheckedInCount(updatedCount);
+          await loadLiveParticipants();
+          toast.success('Zaten canlıdasın!');
+        }
+      } else {
+        toast.error(result.message);
+      }
+    } catch (err) {
+      console.error('Check-in error:', err);
+      toast.error('Bir hata oluştu, tekrar dene.');
+    } finally {
+      setIsProcessingCheckIn(false);
+    }
+  };
+
   useEffect(() => {
     loadEventData();
     return () => {
-      // Bileşen kaldırıldığında realtime aboneliğini iptal et
+      // Bileşen kaldırıldığında realtime aboneliğini ve scanner'ı temizle
       channelRef.current?.unsubscribe();
+      if (qrScannerRef.current) {
+        qrScannerRef.current.stop().catch(() => {});
+      }
     };
   }, [id, user.id]);
 
@@ -139,6 +322,12 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
       loadParticipants();
     }
   }, [showParticipants]);
+
+  useEffect(() => {
+    if (showLiveBox) {
+      loadLiveParticipants();
+    }
+  }, [showLiveBox, checkedInCount]);
 
   if (isLoading) {
     return (
@@ -151,6 +340,13 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
   if (!event) return null;
 
   const isOwner = event.user_id === user.id;
+
+  // Etkinliğin tarihi geçmiş mi kontrol et
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+  const eventDateObj = new Date(event.date);
+  eventDateObj.setHours(0, 0, 0, 0);
+  const isEventExpired = eventDateObj < todayDate;
 
   const toggleJoin = async () => {
     setIsTogglingJoin(true);
@@ -185,8 +381,11 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
 
   const handleSendComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
-
+    if (!newComment.trim()) {
+      setCommentError('Yorum boş olamaz');
+      return;
+    }
+    setCommentError('');
     setIsSendingComment(true);
     try {
       const savedComment = await db.saveComment(event.id, newComment);
@@ -380,6 +579,17 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
           alt={event.title}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-deep)] via-transparent to-transparent"></div>
+
+        {/* Devre Dışı büyük banner - tarihi geçmiş etkinlikler */}
+        {isEventExpired && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-4 px-12 py-8 bg-red-500/20 border-2 border-red-500/50 rounded-[3rem] backdrop-blur-md animate-pulse">
+              <AlertTriangle size={56} className="text-red-400" />
+              <span className="text-red-400 font-black text-4xl md:text-6xl uppercase tracking-[0.3em]">DEVRE DIŞI</span>
+              <span className="text-red-300/70 text-sm md:text-base font-bold uppercase tracking-widest">Bu etkinliğin tarihi geçmiştir</span>
+            </div>
+          </div>
+        )}
 
         <button
           onClick={() => navigate(-1)}
@@ -616,22 +826,27 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
               ))}
             </div>
 
-            <form onSubmit={handleSendComment} className="flex flex-col md:flex-row gap-4 p-4 glass rounded-[2.5rem]">
-              <input
-                type="text"
-                value={newComment}
-                onChange={e => setNewComment(e.target.value)}
-                placeholder="Bir düşünce bırak..."
-                className="flex-grow bg-transparent px-6 py-4 text-sm font-semibold outline-none"
-                disabled={isSendingComment}
-              />
-              <button
-                type="submit"
-                disabled={isSendingComment || !newComment.trim()}
-                className="px-8 py-4 bg-rose-500 text-white hover:bg-rose-600 rounded-2xl transition-all shadow-xl shadow-rose-500/20 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSendingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <>GÖNDER <Send size={16} /></>}
-              </button>
+            <form onSubmit={handleSendComment} className="flex flex-col gap-2">
+              <div className="flex flex-col md:flex-row gap-4 p-4 glass rounded-[2.5rem]">
+                <input
+                  type="text"
+                  value={newComment}
+                  onChange={e => { setNewComment(e.target.value); if (commentError) setCommentError(''); }}
+                  placeholder="Bir düşünce bırak..."
+                  className="flex-grow bg-transparent px-6 py-4 text-sm font-semibold outline-none"
+                  disabled={isSendingComment}
+                />
+                <button
+                  type="submit"
+                  className="px-8 py-4 bg-rose-500 text-white hover:bg-rose-600 rounded-2xl transition-all shadow-xl shadow-rose-500/20 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isSendingComment}
+                >
+                  {isSendingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <>GÖNDER <Send size={16} /></>}
+                </button>
+              </div>
+              {commentError && (
+                <p className="text-rose-500 text-xs font-bold ml-6 animate-pulse">{commentError}</p>
+              )}
             </form>
           </section>
         </div>
@@ -669,16 +884,39 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
             </div>
 
             <div className="space-y-4">
-              <button
-                onClick={toggleJoin}
-                disabled={isTogglingJoin}
-                className={`w-full py-6 rounded-[2rem] font-black text-lg transition-all flex items-center justify-center gap-3 transform hover:scale-[1.03] shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed ${isAttending
-                    ? 'bg-emerald-500/10 text-emerald-500 border-2 border-emerald-500/50'
-                    : 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20'
-                  }`}
-              >
-                {isTogglingJoin ? <Loader2 className="w-6 h-6 animate-spin" /> : (isAttending ? 'ERİŞİM ONAYLANDI' : 'YERİNİ AYIRT')}
-              </button>
+              {isEventExpired ? (
+                <div className="w-full py-6 rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 bg-red-500/10 text-red-400 border-2 border-red-500/40">
+                  <AlertTriangle size={24} /> DEVRE DIŞI
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={toggleJoin}
+                    disabled={isTogglingJoin}
+                    className={`w-full py-6 rounded-[2rem] font-black text-lg transition-all flex items-center justify-center gap-3 transform hover:scale-[1.03] shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed ${isAttending
+                        ? 'bg-emerald-500/10 text-emerald-500 border-2 border-emerald-500/50'
+                        : 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-500/20'
+                      }`}
+                  >
+                    {isTogglingJoin ? <Loader2 className="w-6 h-6 animate-spin" /> : (isAttending ? 'ERİŞİM ONAYLANDI' : 'YERİNİ AYIRT')}
+                  </button>
+
+                  {/* Check-in Butonu veya Canlıda Badge - Katılımcılar için */}
+                  {isAttending && isCheckedIn && (
+                    <div className="w-full py-4 rounded-[2rem] font-black text-sm flex items-center justify-center gap-3 bg-green-500/10 text-green-400 border-2 border-green-500/40">
+                      <CheckCircle2 size={20} /> CANLIDASIN
+                    </div>
+                  )}
+                  {isAttending && !isCheckedIn && (
+                    <button
+                      onClick={startQRScanner}
+                      className="w-full py-4 rounded-[2rem] font-black text-sm transition-all flex items-center justify-center gap-3 bg-indigo-500/10 text-indigo-400 border-2 border-indigo-500/30 hover:bg-indigo-500/20 hover:border-indigo-500/50"
+                    >
+                      <Camera size={20} /> CHECK-IN YAP
+                    </button>
+                  )}
+                </>
+              )}
               
               {/* Etkinlik Bilgileri */}
               <div className="grid grid-cols-1 gap-3 pt-4">
@@ -724,9 +962,245 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
                 )}
               </div>
             )}
+
+            {/* CANLI Kutucuğu - Her zaman göster */}
+            <div className="mt-8 pt-8 border-t border-green-500/10">
+              <button
+                onClick={() => setShowLiveBox(!showLiveBox)}
+                className="w-full flex items-center justify-between text-xs font-black uppercase tracking-wider hover:opacity-100 transition-opacity"
+              >
+                <div className="flex items-center gap-2">
+                  {checkedInCount > 0 ? (
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
+                    </span>
+                  ) : (
+                    <span className="relative flex h-3 w-3">
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-slate-500" />
+                    </span>
+                  )}
+                  <span className={checkedInCount > 0 ? 'text-green-400' : 'text-slate-500'}>CANLI</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={checkedInCount > 0 ? 'text-green-400 font-black' : 'text-slate-500 font-black'}>{checkedInCount} Kişi</span>
+                  <Radio size={14} className={checkedInCount > 0 ? 'text-green-500' : 'text-slate-500'} />
+                </div>
+              </button>
+
+              {showLiveBox && checkedInCount > 0 && (
+                <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
+                  {liveParticipants.length === 0 ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-4 h-4 animate-spin text-green-500" />
+                    </div>
+                  ) : (
+                    liveParticipants.map(lp => (
+                      <div key={lp.id} className="flex items-center gap-3 p-3 glass rounded-2xl border border-green-500/10 hover:bg-green-500/5 transition-all">
+                        <div className="relative">
+                          <img
+                            src={lp.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${lp.id}`}
+                            alt={lp.username}
+                            className="w-8 h-8 rounded-xl object-cover"
+                          />
+                          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900" />
+                        </div>
+                        <div className="flex-grow min-w-0">
+                          <p className="text-xs font-bold truncate">{lp.firstName} {lp.lastName}</p>
+                          <p className="text-[10px] text-green-400 truncate">Canlıda</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {showLiveBox && checkedInCount === 0 && (
+                <div className="mt-4 py-4 text-center">
+                  <p className="text-xs opacity-40">Henüz canlıya katılan yok</p>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Vibe Sahibi QR Kodu */}
+          {isOwner && (
+            <div className="glass-card p-8 rounded-[3rem] border-fuchsia-500/20 shadow-2xl">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-6 text-center">ETKİNLİK QR KODU</h3>
+              <div className="bg-white p-6 rounded-[2rem] flex justify-center">
+                <QRCode
+                  value={`${window.location.origin}/#/checkin/${event.id}`}
+                  size={180}
+                  level="H"
+                  className="h-auto max-w-full"
+                />
+              </div>
+              <p className="text-[10px] text-center mt-4 opacity-40 font-bold">
+                Katılımcılar bu QR'ı okutarak canlıya katılır
+              </p>
+              <div className="flex justify-center mt-3">
+                <div className="px-3 py-1 bg-fuchsia-100 text-fuchsia-700 rounded-lg text-[10px] font-bold border border-fuchsia-200 flex items-center gap-1">
+                  <div className="w-2 h-2 bg-fuchsia-500 rounded-full animate-pulse" /> Aktif
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* QR Scanner Modal */}
+      {showQRScanner && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xl" onClick={stopQRScanner} />
+          <div className="relative w-full max-w-sm glass-card rounded-3xl p-6 animate-scale-in">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-500/10 rounded-2xl flex items-center justify-center">
+                  <Camera className="text-indigo-500" size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black uppercase">QR Okut</h2>
+                  <p className="text-[10px] opacity-60">Etkinlik QR kodunu tara</p>
+                </div>
+              </div>
+              <button onClick={stopQRScanner} className="p-2 hover:bg-slate-500/10 rounded-xl">
+                <X size={20} />
+              </button>
+            </div>
+            <div id="qr-reader" className="rounded-2xl overflow-hidden" style={{ minHeight: 300 }} />
+            <p className="text-[10px] text-center mt-4 opacity-40 font-bold">
+              Vibe sahibinin QR kodunu kameranıza gösterin
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Bilet (Ticket) Modal */}
+      {showTicketModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xl" onClick={() => { setShowTicketModal(false); setTicketStatus('pending'); }} />
+          <div className="relative w-full max-w-sm md:max-w-xl animate-scale-in">
+            {/* Bilet */}
+            <div className="bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row">
+              {/* Sol taraf — Etkinlik bilgisi */}
+              <div className="relative h-48 md:h-auto md:w-2/3 bg-slate-900 text-white p-6 md:p-8 flex flex-col justify-between overflow-hidden">
+                {event.image && (
+                  <div className="absolute inset-0 opacity-40">
+                    <img src={event.image} alt="" className="w-full h-full object-cover grayscale mix-blend-overlay" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-tr from-purple-900/80 to-indigo-900/80" />
+
+                <div className="relative z-10 space-y-1">
+                  <h3 className="text-xs font-bold tracking-[0.2em] text-purple-300 uppercase">Silius Ticket</h3>
+                  <h1 className="text-3xl md:text-5xl font-black font-outfit uppercase leading-none">{event.title}</h1>
+                  <p className="text-fuchsia-200 uppercase tracking-widest text-xs font-bold">
+                    {{ club: 'Club Night', rave: 'Rave', pub: 'Pub Night', coffee: 'Coffee Meet', beach: 'Sahil Partisi', house: 'Ev Partisi', street: 'Sokak Partisi', other: 'Etkinlik' }[event.category] || event.category}
+                  </p>
+                </div>
+
+                {/* Canlı katılımcı sayısı */}
+                {checkedInCount > 0 && (
+                  <div className="relative z-10 mt-3">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/20 border border-green-500/40 rounded-full">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+                      </span>
+                      <UsersIcon size={12} className="text-green-400" />
+                      <span className="text-green-400 font-bold text-xs">{checkedInCount} kişi canlıda</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="relative z-10 mt-4 md:mt-0 flex items-center gap-2 text-sm font-bold text-slate-300">
+                  <Calendar size={16} />
+                  <span>{new Date(event.date).toLocaleDateString('tr-TR')}</span>
+                  <span className="w-1 h-1 bg-slate-500 rounded-full" />
+                  <span>{new Date(event.date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+
+                {/* Delik efektleri */}
+                <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-slate-950 rounded-full z-20 hidden md:block" />
+                <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-slate-950 rounded-full z-20 hidden md:block" />
+              </div>
+
+              {/* Sağ taraf — Bilet koçanı */}
+              <div className="md:w-1/3 bg-slate-100 p-6 md:p-8 flex flex-col items-center justify-between border-t-2 md:border-t-0 md:border-l-2 border-dashed border-slate-300 relative">
+                <div className="absolute -left-3 top-0 md:hidden w-6 h-6 bg-slate-950 rounded-full translate-y-[-50%]" />
+                <div className="absolute -right-3 top-0 md:hidden w-6 h-6 bg-slate-950 rounded-full translate-y-[-50%]" />
+
+                <div className="text-center w-full">
+                  <h2 className="text-2xl font-black text-slate-900 -rotate-2 md:rotate-0">BİLET</h2>
+                  <p className="text-xs font-mono text-slate-500 mt-1 uppercase">ID: {event.id.slice(0, 8)}</p>
+                </div>
+
+                {/* Barkod */}
+                <div className="w-full my-4">
+                  <div className="flex gap-1 h-12 w-full justify-center overflow-hidden opacity-80">
+                    {Array.from({ length: 40 }, (_, i) => (
+                      <div key={i} className={`h-full bg-slate-900 ${(i * 7 + 3) % 2 === 0 ? 'w-1' : 'w-2'}`} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Aksiyon alanı */}
+                <div className="w-full space-y-2">
+                  {ticketStatus === 'success' ? (
+                    <>
+                      <div className="bg-green-100 border-2 border-green-500 text-green-700 p-3 rounded-xl text-center font-black">
+                        CANLIYA KATILDIN
+                        <div className="flex items-center justify-center gap-1 text-xs font-medium text-green-600 mt-1">
+                          <CheckCircle2 size={12} /> +{pointsEarned} Vibe Puanı
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { setShowTicketModal(false); setTicketStatus('pending'); }}
+                        className="w-full text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors text-center py-1"
+                      >
+                        Vibe Detaylarına Dön →
+                      </button>
+                    </>
+                  ) : ticketStatus === 'already' ? (
+                    <>
+                      <div className="bg-indigo-100 border-2 border-indigo-500 text-indigo-700 p-3 rounded-xl text-center font-black">
+                        ZATEN CANLIDASIN
+                      </div>
+                      <button
+                        onClick={() => { setShowTicketModal(false); setTicketStatus('pending'); }}
+                        className="w-full text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors text-center py-1"
+                      >
+                        Vibe Detaylarına Dön →
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleLiveCheckIn}
+                        disabled={isProcessingCheckIn}
+                        className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold uppercase tracking-wider hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-slate-900/30 disabled:opacity-60"
+                      >
+                        {isProcessingCheckIn
+                          ? <Loader2 size={18} className="animate-spin" />
+                          : <>CANLIYA KATIL <ArrowRight size={18} /></>
+                        }
+                      </button>
+                      <p className="text-[10px] text-center text-slate-500 font-medium">Butona basarak etkinliğe canlı katılmış olursun.</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Alt not */}
+            <div className="mt-6 text-center">
+              <button onClick={() => { setShowTicketModal(false); setTicketStatus('pending'); }} className="text-slate-500/60 hover:text-white transition-colors text-xs underline">
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Düzenleme Modal */}
       {showEditModal && (

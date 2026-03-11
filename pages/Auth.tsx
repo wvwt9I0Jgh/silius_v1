@@ -37,8 +37,27 @@ const Auth: React.FC = () => {
 
     try {
       if (isRegister) {
+        // Ad/Soyad validasyonu
+        if (!formData.firstName.trim() || !formData.lastName.trim()) {
+          setError('Ad ve soyad alanları zorunludur.');
+          setIsLoading(false);
+          return;
+        }
+        // Kullanıcı adı validasyonu
+        if (!formData.username.trim()) {
+          setError('Kullanıcı adı zorunludur.');
+          setIsLoading(false);
+          return;
+        }
+        // E-posta format validasyonu
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+          setError('Geçerli bir e-posta adresi girin.');
+          setIsLoading(false);
+          return;
+        }
         if (!formData.kvkkConsent) {
-          setError('KVKK metnini okuyup onaylamalısınız.');
+          setError('KVKK onayı zorunludur. Lütfen kuralları okuyup onaylayın.');
           setIsLoading(false);
           return;
         }
@@ -49,9 +68,9 @@ const Auth: React.FC = () => {
         }
 
         const { error: signUpError } = await signUp(formData.email, formData.password, {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          username: formData.username,
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          username: formData.username.trim(),
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.username}`,
           bio: "Silius'ta yeni bir macera başlıyor...",
           kvkkConsent: true,
@@ -65,8 +84,8 @@ const Auth: React.FC = () => {
             setError(signUpError.message || 'Kayıt başarısız.');
           }
         } else {
-          setError('Kayıt başarılı! E-posta kutunuzu kontrol edin.');
-          setTimeout(() => setIsRegister(false), 2000);
+          // Kayıt başarılı - profil tamamlama sayfasına yönlendir
+          navigate('/profile-setup');
         }
       } else {
         const { error: signInError } = await signIn(formData.email, formData.password);

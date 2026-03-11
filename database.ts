@@ -5,13 +5,9 @@ import { User, Event, Comment, EventParticipant, Friend, EventGalleryPhoto } fro
 // Helper: Get the appropriate client for admin operations
 // Uses supabaseAdmin (service role) which bypasses RLS for all admin operations
 const getAdminClient = () => {
-  // If service role key is available, always use it for admin operations
   if (hasAdminClient && supabaseAdmin) {
-    console.log('🔑 Using admin client (service role)');
     return supabaseAdmin;
   }
-  // Fallback to normal client
-  console.warn('⚠️ Admin client not available, using normal client');
   return supabase;
 };
 
@@ -56,7 +52,6 @@ export const db = {
         .single();
 
       if (error) {
-        console.warn('dailyVibeCount/lastVibeDate columns may not exist yet, skipping limit check');
         return { canCreate: true, remaining: 3 };
       }
 
@@ -78,8 +73,7 @@ export const db = {
       const resetTime = tomorrow.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
       return { canCreate, remaining, resetTime: canCreate ? undefined : `Yarın ${resetTime}` };
-    } catch (error) {
-      console.error('Daily vibe limit check ERROR:', error);
+    } catch {
       return { canCreate: true, remaining: 3 }; 
     }
   },
@@ -96,7 +90,6 @@ export const db = {
         .single();
 
       if (selectError) {
-        console.warn('dailyVibeCount/lastVibeDate columns may not exist, skipping increment');
         return true;
       }
 
@@ -116,12 +109,11 @@ export const db = {
         .eq('id', userId);
 
       if (error) {
-        console.error('Increment daily vibe count ERROR (Sütunlar eksik olabilir):', error);
+        console.error('Increment daily vibe count error:', error);
         return false;
       }
       return true;
-    } catch (error) {
-      console.error('Increment daily vibe count ERROR:', error);
+    } catch {
       return false;
     }
   },
@@ -136,7 +128,6 @@ export const db = {
     // Günlük limit kontrolü
     const limitCheck = await db.checkDailyVibeLimit(userData.user.id);
     if (!limitCheck.canCreate) {
-      console.error('Daily vibe limit reached');
       throw new Error(`Günlük vibe limitine ulaştınız (3/3). ${limitCheck.resetTime} sıfırlanacak.`);
     }
 
@@ -145,39 +136,15 @@ export const db = {
       user_id: userData.user.id
     };
 
-    // İlk deneme: tüm alanlarla kaydet
-    let { data, error } = await supabase
+    // Koordinat alanları boşsa gönderme
+    if (!eventData.latitude) delete eventData.latitude;
+    if (!eventData.longitude) delete eventData.longitude;
+
+    const { data, error } = await supabase
       .from('events')
       .insert(eventData)
       .select()
       .single();
-
-    // latitude/longitude kolonları henüz eklenmemişse, onları çıkarıp tekrar dene
-    if (error && error.message?.includes("'latitude'")) {
-      console.warn('latitude/longitude columns not found, saving without coordinates...');
-      const { latitude, longitude, ...eventWithoutCoords } = eventData;
-      const retryResult = await supabase
-        .from('events')
-        .insert(eventWithoutCoords)
-        .select()
-        .single();
-      data = retryResult.data;
-      error = retryResult.error;
-    }
-
-    // Kategori CHECK constraint eski değerlerle kalıyorsa, 'other' ile dene
-    if (error && (error.message?.includes('check') || error.message?.includes('category') || error.code === '23514')) {
-      console.warn('Category CHECK constraint may be outdated, retrying with other...');
-      const { latitude: _lat, longitude: _lng, ...retryBase } = eventData;
-      const retryData = { ...retryBase, category: 'other' };
-      const retryResult = await supabase
-        .from('events')
-        .insert(retryData)
-        .select()
-        .single();
-      data = retryResult.data;
-      error = retryResult.error;
-    }
 
     if (error) {
       console.error('Event save error:', error);
@@ -186,6 +153,15 @@ export const db = {
 
     // Başarılı olursa günlük sayacı artır
     await db.incrementDailyVibeCount(userData.user.id);
+
+    // Etkinlik sahibini otomatik olarak canlı katılımcı yap
+    await supabase
+      .from('event_participants')
+      .insert({
+        event_id: data.id,
+        user_id: userData.user.id,
+        checked_in: true
+      });
 
     return data;
   },
@@ -293,10 +269,14 @@ export const db = {
       .eq('checked_in', true);
 
     if (error) {
-      // checked_in kolonu yoksa sessizce 0 dön
-      if (error.message?.includes('checked_in') || error.code === 'PGRST204') {
-        return 0;
-      }
+      // checked_in kolonu henüz eklenmemişse sessizce 0 dön (migration bekliyor)
+      const isColMissing =
+        error.code === 'PGRST204' ||
+        (error as any).status === 400 ||
+        error.message?.includes('checked_in') ||
+        error.message?.includes('schema cache') ||
+        error.details?.toString().includes('checked_in');
+      if (isColMissing) return 0;
       console.error('Live participant count error:', error);
       return 0;
     }
@@ -312,6 +292,18 @@ export const db = {
       .maybeSingle();
 
     return !error && !!data;
+  },
+
+  isUserCheckedIn: async (eventId: string, userId: string): Promise<boolean> => {
+    const { data, error } = await supabase
+      .from('event_participants')
+      .select('checked_in')
+      .eq('event_id', eventId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error || !data) return false;
+    return !!data.checked_in;
   },
 
   // ==================== COMMENTS ====================
@@ -429,9 +421,6 @@ export const db = {
   // ==================== FRIENDS ====================
 
   getFriends: async (userId: string): Promise<User[]> => {
-    console.log('📋 getFriends called for:', userId);
-
-    // 1. Önce arkadaş ID'lerini al
     const { data: friendRelations, error: relError } = await supabase
       .from('friends')
       .select('friend_id')
@@ -443,14 +432,11 @@ export const db = {
     }
 
     if (!friendRelations || friendRelations.length === 0) {
-      console.log('No friends found for user:', userId);
       return [];
     }
 
     const friendIds = friendRelations.map(f => f.friend_id);
-    console.log('Friend IDs:', friendIds);
 
-    // 2. Şimdi bu ID'lere sahip kullanıcıları çek
     const { data: users, error: usersError } = await supabase
       .from('users')
       .select('*')
@@ -461,15 +447,11 @@ export const db = {
       return [];
     }
 
-    console.log('Friends fetched:', users?.length || 0);
     return users || [];
   },
 
   // Beni arkadaş ekleyenler (reverse friends)
   getReverseFriends: async (userId: string): Promise<User[]> => {
-    console.log('📋 getReverseFriends called for:', userId);
-
-    // 1. Önce beni ekleyenlerin ID'lerini al
     const { data: friendRelations, error: relError } = await supabase
       .from('friends')
       .select('user_id')
@@ -481,14 +463,11 @@ export const db = {
     }
 
     if (!friendRelations || friendRelations.length === 0) {
-      console.log('No reverse friends found for user:', userId);
       return [];
     }
 
     const userIds = friendRelations.map(f => f.user_id);
-    console.log('Reverse Friend User IDs:', userIds);
 
-    // 2. Şimdi bu ID'lere sahip kullanıcıları çek
     const { data: users, error: usersError } = await supabase
       .from('users')
       .select('*')
@@ -499,7 +478,6 @@ export const db = {
       return [];
     }
 
-    console.log('Reverse friends fetched:', users?.length || 0);
     return users || [];
   },
 
@@ -518,43 +496,27 @@ export const db = {
 
   addFriend: async (friendId: string): Promise<boolean> => {
     const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      console.error('❌ addFriend: User not logged in');
-      return false;
-    }
+    if (!userData.user) return false;
 
     const userId = userData.user.id;
-    console.log('📤 Adding friend:', { user_id: userId, friend_id: friendId });
 
     // Kendini arkadaş olarak eklemeyi engelle
-    if (userId === friendId) {
-      console.warn('⚠️ Cannot add yourself as friend');
-      return false;
-    }
+    if (userId === friendId) return false;
 
-    // Admin client kullan - RLS bypass
     const client = getAdminClient();
 
     try {
-      // 1. Önce arkadaşlık var mı kontrol et
-      const { data: existingFriend, error: checkError } = await client
+      // Zaten arkadaş mı kontrol et
+      const { data: existingFriend } = await client
         .from('friends')
         .select('id')
         .eq('user_id', userId)
         .eq('friend_id', friendId)
         .maybeSingle();
 
-      if (checkError) {
-        console.error('❌ Friend check error:', checkError);
-      }
+      if (existingFriend) return true;
 
-      // 2. Zaten arkadaşsa başarılı dön
-      if (existingFriend) {
-        console.log('✅ Already friends, returning success');
-        return true;
-      }
-
-      // 3. Arkadaş değilse INSERT yap (admin client ile)
+      // Arkadaş ekle
       const { error: insertError } = await client
         .from('friends')
         .insert({
@@ -564,26 +526,15 @@ export const db = {
         });
 
       if (insertError) {
-        // Duplicate hatası olsa bile başarılı say
-        if (insertError.code === '23505' ||
-          insertError.message?.toLowerCase().includes('duplicate') ||
-          insertError.message?.toLowerCase().includes('unique')) {
-          console.log('✅ Friend already exists, treating as success');
-          return true;
-        }
-
-        console.error('❌ Add friend insert error:', {
-          code: insertError.code,
-          message: insertError.message,
-          details: insertError.details
-        });
+        // Duplicate = başarılı
+        if (insertError.code === '23505') return true;
+        console.error('Add friend error:', insertError);
         return false;
       }
 
-      console.log('✅ Friend added successfully');
       return true;
     } catch (err) {
-      console.error('❌ addFriend exception:', err);
+      console.error('addFriend exception:', err);
       return false;
     }
   },
@@ -854,29 +805,19 @@ export const db = {
     const client = getAdminClient();
 
     // 1. Önce ilişkili verileri temizle
-    console.log('🗑️ Kullanıcı siliniyor:', userId);
-
     try {
-      // Kullanıcının event_participants kayıtlarını sil
-      await client.from('event_participants').delete().eq('user_id', userId);
+      // İlişkili verileri temizle
+      await Promise.all([
+        client.from('event_participants').delete().eq('user_id', userId),
+        client.from('comments').delete().eq('user_id', userId),
+        client.from('friends').delete().eq('user_id', userId),
+        client.from('friends').delete().eq('friend_id', userId),
+        client.from('notifications').delete().eq('user_id', userId),
+        client.from('banned_users').delete().eq('user_id', userId),
+        client.from('events').delete().eq('user_id', userId),
+      ]);
 
-      // Kullanıcının yorumlarını sil
-      await client.from('comments').delete().eq('user_id', userId);
-
-      // Kullanıcının arkadaşlık kayıtlarını sil (her iki yönde)
-      await client.from('friends').delete().eq('user_id', userId);
-      await client.from('friends').delete().eq('friend_id', userId);
-
-      // Kullanıcının bildirimlerini sil
-      await client.from('notifications').delete().eq('user_id', userId);
-
-      // Kullanıcının ban kayıtlarını sil
-      await client.from('banned_users').delete().eq('user_id', userId);
-
-      // Kullanıcının etkinliklerini sil
-      await client.from('events').delete().eq('user_id', userId);
-
-      // 2. Users tablosundan sil
+      // Users tablosundan sil
       const { error: userError } = await client
         .from('users')
         .delete()
@@ -887,18 +828,12 @@ export const db = {
         return false;
       }
 
-      // 3. Supabase Auth'tan kullanıcıyı sil (admin client gerekli)
+      // Supabase Auth'tan kullanıcıyı sil (admin client gerekli)
       if (hasAdminClient && supabaseAdmin) {
         const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
         if (authError) {
           console.error('Delete user from Auth error:', authError);
-          // Auth'tan silinemese bile users tablosundan silindi, yine de başarılı say
-          console.warn('⚠️ Kullanıcı users tablosundan silindi ancak Auth\'tan silinemedi');
-        } else {
-          console.log('✅ Kullanıcı hem veritabanından hem Auth\'tan silindi');
         }
-      } else {
-        console.warn('⚠️ Admin client yok, sadece users tablosundan silindi');
       }
 
       return true;
@@ -1100,11 +1035,7 @@ export const db = {
   // ==================== COMMENTS WITH REPLIES (NESTED) ====================
 
   getCommentsWithReplies: async (eventId: string, eventOwnerId: string) => {
-    let data: any[] | null = null;
-    let error: any = null;
-
-    // Try with parent_comment_id first
-    const result1 = await supabase
+    const { data, error } = await supabase
       .from('comments')
       .select(`
         id,
@@ -1121,39 +1052,15 @@ export const db = {
       .eq('event_id', eventId)
       .order('created_at', { ascending: true });
 
-    if (result1.error) {
-      // Fallback: query without parent_comment_id
-      console.warn('parent_comment_id not available, falling back to flat comments');
-      const result2 = await supabase
-        .from('comments')
-        .select(`
-          id,
-          event_id,
-          user_id,
-          text,
-          created_at,
-          users (
-            username,
-            avatar
-          )
-        `)
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: true });
-
-      if (result2.error) {
-        console.error('Comments fetch error:', result2.error);
-        return [];
-      }
-      data = result2.data;
-    } else {
-      data = result1.data;
+    if (error) {
+      console.error('Comments fetch error:', error);
+      return [];
     }
 
     // Organize comments into parent-child structure
     const commentsMap = new Map<string, any>();
     const rootComments: any[] = [];
 
-    // First pass: create map of all comments
     (data || []).forEach((comment: any) => {
       commentsMap.set(comment.id, {
         ...comment,
@@ -1162,7 +1069,6 @@ export const db = {
       });
     });
 
-    // Second pass: organize into parent-child structure
     commentsMap.forEach((comment) => {
       if (comment.parent_comment_id) {
         const parent = commentsMap.get(comment.parent_comment_id);
@@ -1271,33 +1177,25 @@ export const db = {
 
   getAllUsersWithVibeScores: async (): Promise<Array<{ user: User; vibeScore: number }>> => {
     try {
-      // Tüm kullanıcıları al
-      const { data: users } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Tüm verileri paralel olarak al — 3 query aynı anda
+      const [usersResult, allEventsResult, allParticipationsResult] = await Promise.all([
+        supabase.from('users').select('*').order('created_at', { ascending: false }),
+        supabase.from('events').select('user_id'),
+        supabase.from('event_participants').select('user_id'),
+      ]);
 
+      const users = usersResult.data;
       if (!users || users.length === 0) return [];
-
-      // Tüm etkinlikleri tek sorguda al
-      const { data: allEvents } = await supabase
-        .from('events')
-        .select('user_id');
-
-      // Tüm katılımları tek sorguda al
-      const { data: allParticipations } = await supabase
-        .from('event_participants')
-        .select('user_id');
 
       // Sayıları hesapla
       const createdCounts: Record<string, number> = {};
       const joinedCounts: Record<string, number> = {};
 
-      allEvents?.forEach(e => {
+      allEventsResult.data?.forEach(e => {
         createdCounts[e.user_id] = (createdCounts[e.user_id] || 0) + 1;
       });
 
-      allParticipations?.forEach(p => {
+      allParticipationsResult.data?.forEach(p => {
         joinedCounts[p.user_id] = (joinedCounts[p.user_id] || 0) + 1;
       });
 
@@ -1324,52 +1222,38 @@ export const db = {
   // Event'lerin sahiplerinin vibe score'larını al (Home sayfası için)
   getEventsWithOwnerVibeScores: async (): Promise<Array<{ event: Event; ownerVibeScore: number }>> => {
     try {
-      const { data: events } = await supabase
-        .from('events')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Tüm verileri paralel olarak al — 3 query aynı anda
+      const [eventsResult, allEventsResult, allParticipationsResult] = await Promise.all([
+        supabase.from('events').select('*').order('created_at', { ascending: false }),
+        supabase.from('events').select('user_id'),
+        supabase.from('event_participants').select('user_id'),
+      ]);
 
+      const events = eventsResult.data;
       if (!events || events.length === 0) return [];
 
-      // Tüm unique user_id'leri al
+      // Tüm unique user_id'leri al ve kullanıcı bilgilerini çek
       const userIds = [...new Set(events.map(e => e.user_id))];
-
-      // Kullanıcı bilgilerini al
-      let users: any[] | null = null;
-      const { data: usersData, error: usersError } = await supabase
+      // totalTimeSpent, migration-vibe-score.sql çalıştırılmamışsa olmayabilir
+      // hata durumunda users null kalır, forEach skip edilir, scorelar 0 olur
+      const { data: users } = await supabase
         .from('users')
         .select('id, totalTimeSpent')
-        .in('id', userIds);
-      if (usersError) {
-        const { data: fallbackUsers } = await supabase
-          .from('users')
-          .select('id')
-          .in('id', userIds);
-        users = fallbackUsers;
-      } else {
-        users = usersData;
-      }
-
-      // Tüm etkinlikleri tek sorguda al (created counts için)
-      const { data: allEvents } = await supabase
-        .from('events')
-        .select('user_id');
-
-      // Tüm katılımları tek sorguda al
-      const { data: allParticipations } = await supabase
-        .from('event_participants')
-        .select('user_id');
+        .in('id', userIds)
+        .throwOnError()
+        .then(res => res)
+        .catch(() => ({ data: null }));
 
       // Sayıları hesapla
       const createdCounts: Record<string, number> = {};
       const joinedCounts: Record<string, number> = {};
       const timeSpentMap: Record<string, number> = {};
 
-      allEvents?.forEach(e => {
+      allEventsResult.data?.forEach(e => {
         createdCounts[e.user_id] = (createdCounts[e.user_id] || 0) + 1;
       });
 
-      allParticipations?.forEach(p => {
+      allParticipationsResult.data?.forEach(p => {
         joinedCounts[p.user_id] = (joinedCounts[p.user_id] || 0) + 1;
       });
 
@@ -1399,15 +1283,15 @@ export const db = {
      try {
        const { data: user } = await supabase
          .from('users')
-         .select('vibe_score')
+         .select('vibeScore')
          .eq('id', userId)
          .single();
        
-       const currentScore = user?.vibe_score || 0;
+       const currentScore = (user as any)?.vibeScore || (user as any)?.vibe_score || 0;
        
        const { error } = await supabase
          .from('users')
-         .update({ vibe_score: currentScore + points })
+         .update({ vibeScore: currentScore + points })
          .eq('id', userId);
          
        return !error;
@@ -1419,50 +1303,38 @@ export const db = {
   // Check-in Process
   checkInToEvent: async (eventId: string, userId: string): Promise<{ success: boolean; message: string; points: number }> => {
      try {
-        // 1. Check/Create Participation
-        let { data: part } = await supabase
+        // 1. Katılım kontrolü
+        const { data: part } = await supabase
             .from('event_participants')
             .select('*')
             .eq('event_id', eventId)
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
         
-        if (!part) {
-            // Join if not joined
-            const { data: newPart, error: joinError } = await supabase
-                .from('event_participants')
-                .insert({ event_id: eventId, user_id: userId, checked_in: false })
-                .select()
-                .single();
-            if (joinError) throw joinError;
-            part = newPart;
-        }
-
-        if (part.checked_in) {
+        if (part && part.checked_in) {
             return { success: true, message: 'Zaten giriş yapıldı', points: 0 };
         }
 
-        // 2. Mark Checked In
-        const { error: checkInError } = await supabase
-            .from('event_participants')
-            .update({ checked_in: true })
-            .eq('id', part.id);
-        
-        if (checkInError) throw checkInError;
-
-        // 3. Award Points
-        try {
-            await supabase.rpc('increment_vibe_score', { user_id: userId, points: 1 });
-        } catch {
-            // Fallback if RPC doesn't exist
-            const { data: u } = await supabase.from('users').select('vibe_score').eq('id', userId).single();
-            const sc = (u as any)?.vibe_score || 0;
-            await supabase.from('users').update({ vibe_score: sc + 1 } as any).eq('id', userId);
+        if (part && !part.checked_in) {
+            // Mevcut kaydı sil ve checked_in: true ile yeniden ekle
+            // (RLS'de UPDATE policy olmadığı için delete+insert kullanıyoruz)
+            await supabase
+                .from('event_participants')
+                .delete()
+                .eq('event_id', eventId)
+                .eq('user_id', userId);
         }
+
+        // Yeni kayıt: doğrudan checked_in: true ile ekle
+        const { error: insertError } = await supabase
+            .from('event_participants')
+            .insert({ event_id: eventId, user_id: userId, checked_in: true });
+        
+        if (insertError) throw insertError;
 
         return { success: true, message: 'Giriş Başarılı!', points: 1 };
      } catch (err: any) {
-         console.error(err);
+         console.error('Check-in error:', err);
          return { success: false, message: err.message || 'Hata', points: 0 };
      }
   },

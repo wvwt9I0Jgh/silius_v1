@@ -42,7 +42,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const PROFILE_CACHE_KEY = 'silius_profile_cache';
 const CACHE_EXPIRY_KEY = 'silius_cache_expiry';
 const CACHE_DURATION = 10 * 60 * 1000; // 10 dakika - Daha uzun cache = Daha hızlı yükleme
-const MAX_LOADING_TIME = 2000; // 2 saniye maksimum yükleme süresi - daha hızlı!
+const MAX_LOADING_TIME = 1500; // 1.5 saniye maksimum yükleme süresi - daha hızlı!
 
 // LocalStorage'dan profil cache'i oku
 const getProfileFromCache = (userId: string): UserProfile | null => {
@@ -110,8 +110,7 @@ const detectOAuthError = (): string | null => {
         window.history.replaceState({}, '', window.location.origin + window.location.pathname + '#/home');
       }, 100);
     }
-  } catch (e) {
-    console.warn('OAuth error detection failed:', e);
+  } catch {
   }
   return null;
 };
@@ -131,9 +130,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const oauthError = detectOAuthError();
     if (oauthError) {
-      console.error('🔴 OAuth Error:', oauthError);
       sessionStorage.setItem('silius_oauth_error', oauthError);
-      // Auth sayfasına yönlendir
       window.location.hash = '#/auth';
     }
   }, []);
@@ -148,12 +145,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     try {
-      // Timeout - 2 saniye (hızlı yükleme)
       const timeoutPromise = new Promise<null>((resolve) =>
-        setTimeout(() => resolve(null), 2000)
+        setTimeout(() => resolve(null), MAX_LOADING_TIME)
       );
 
-      // maybeSingle() kullan - single() 406 hatası veriyor
       const fetchPromise = supabase
         .from('users')
         .select('*')
@@ -162,33 +157,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const result = await Promise.race([fetchPromise, timeoutPromise]);
 
-      if (!result) {
-        console.warn('Profile fetch timeout - 2s geçti');
-        return null;
-      }
+      if (!result) return null;
 
       const { data, error } = result as any;
 
-      if (error) {
-        // 406 hatası - ignore et çünkü maybeSingle ile çözülmeli
-        if (error.code === 'PGRST116') {
-          console.warn('Profile not found (expected for new users)');
-          return null;
-        }
-        console.warn('Profile fetch warning:', error.message);
-        return null;
-      }
-
-      if (!data) {
-        console.log('No profile found for user:', userId);
-        return null;
-      }
+      if (error || !data) return null;
 
       const profileData = data as UserProfile;
       saveProfileToCache(profileData);
       return profileData;
-    } catch (err: any) {
-      console.warn('Profile fetch error:', err?.message);
+    } catch {
       return null;
     }
   };
@@ -223,13 +201,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     let mounted = true;
 
-    // GÜVENLİK: Maksimum 3 saniye loading - sonra zorla göster
+    // Maksimum 2 saniye loading - sonra zorla göster
     const loadingTimeout = setTimeout(() => {
       if (mounted && loading) {
-        console.warn('⚠️ Max loading time (3s) reached, forcing UI');
         setLoading(false);
       }
-    }, 3000);
+    }, 2000);
 
     const checkAuth = async () => {
       try {
@@ -307,8 +284,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       async (event, session) => {
         if (!mounted) return;
 
-        console.log('🔄 Auth state changed:', event, session?.user?.email);
-
         // INITIAL_SESSION: sayfa yüklendiğinde mevcut session restore edildi
         if (event === 'INITIAL_SESSION') {
           initialSessionFiredRef.current = true;
@@ -374,7 +349,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setProfile(profileData);
           } else {
             // Profil yoksa otomatik oluştur (Google OAuth veya normal kayıt)
-            console.log('🆕 No profile found, creating automatically...');
 
             const userMeta = session.user.user_metadata || {};
             const email = session.user.email || '';
@@ -402,12 +376,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 }, { onConflict: 'id' });
 
               if (!insertError) {
-                console.log('✅ Profile created successfully!');
                 const newProfile = await fetchProfile(session.user.id, false);
                 setProfile(newProfile);
               }
             } catch (createError) {
-              console.error('❌ Profile creation error:', createError);
+              console.error('Profile creation error:', createError);
             }
           }
         } else {
@@ -444,18 +417,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             firstName: userData.firstName || '',
             lastName: userData.lastName || '',
             username: userData.username || email.split('@')[0],
-            avatar: userData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.username}`
+            avatar: userData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.username}`,
+            kvkkConsent: userData.kvkkConsent || false,
+            kvkkConsentDate: userData.kvkkConsentDate || new Date().toISOString()
           }
         }
       });
 
-      if (authError) {
-        console.error('🔴 Sign up error:', authError.message, authError);
-        throw authError;
-      }
+      if (authError) throw authError;
       if (!authData.user) throw new Error('Kayıt başarısız');
-
-      console.log('✅ Auth sign up success:', authData.user.id);
 
       // 2. public.users tablosuna da kayıt ekle
       const { error: profileError } = await supabase
@@ -470,18 +440,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           bio: "Silius'ta yeni bir macera başlıyor...",
           role: 'user',
           hasAcceptedTerms: true,
-          isProfileComplete: false
+          isProfileComplete: false,
+          kvkk_consent: true,
+          kvkk_consent_date: new Date().toISOString()
         }, { onConflict: 'id' });
 
       if (profileError) {
-        console.error('⚠️ Profile creation error (user may need to verify email first):', profileError);
-      } else {
-        console.log('✅ Profile created in users table with isProfileComplete: false');
+        console.error('Profile creation error:', profileError);
       }
 
       return { error: null };
     } catch (error) {
-      console.error('🔴 Sign up catch:', error);
       return { error: error as Error };
     }
   };
@@ -529,7 +498,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (error) throw error;
       return { error: null };
     } catch (error) {
-      console.error('🔴 Google sign in error:', error);
       return { error: error as Error };
     }
   };

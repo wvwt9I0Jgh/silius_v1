@@ -24,6 +24,11 @@ CREATE INDEX IF NOT EXISTS idx_event_gallery_user_id ON event_gallery(user_id);
 -- =============================================
 ALTER TABLE event_gallery ENABLE ROW LEVEL SECURITY;
 
+-- Eski politikaları temizle (idempotent)
+DROP POLICY IF EXISTS "Anyone can view gallery photos" ON event_gallery;
+DROP POLICY IF EXISTS "Event owner can insert gallery photos" ON event_gallery;
+DROP POLICY IF EXISTS "Photo owner can delete gallery photos" ON event_gallery;
+
 -- Herkes galeri fotoğraflarını görebilir
 CREATE POLICY "Anyone can view gallery photos"
   ON event_gallery FOR SELECT

@@ -53,6 +53,14 @@ const CheckInPage: React.FC = () => {
         // Canlı katılımcı sayısını çek
         const count = await db.getLiveParticipantCount(data.id);
         setLiveCount(count);
+
+        // Kullanıcı zaten check-in yaptıysa direkt "already" göster
+        if (user) {
+          const alreadyCheckedIn = await db.isUserCheckedIn(data.id, user.id);
+          if (alreadyCheckedIn) {
+            setCheckInStatus('already');
+          }
+        }
       } catch (err) {
         console.error('CheckInPage fetch error:', err);
       } finally {

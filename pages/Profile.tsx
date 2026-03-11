@@ -48,35 +48,33 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const allEvents = await db.getEvents();
+      // Tüm verileri paralel olarak al — tek seferde
+      const [allEvents, friendIds, score, participationsResult] = await Promise.all([
+        db.getEvents(),
+        db.getFriendIds(user.id),
+        db.calculateVibeScore(user.id),
+        supabase.from('event_participants').select('event_id').eq('user_id', user.id),
+      ]);
 
-      // My events (created by me)
-      const myEventsFiltered = allEvents.filter(e => e.user_id === user.id);
-      const myEventsWithCounts = await Promise.all(
-        myEventsFiltered.map(async (event) => ({
-          ...event,
-          participantCount: await db.getParticipantCount(event.id)
-        }))
+      // Katılınan event ID'lerini set olarak tut (O(1) lookup)
+      const joinedEventIds = new Set(
+        (participationsResult.data || []).map(p => p.event_id)
       );
-      setMyEvents(myEventsWithCounts);
 
-      // Joined events
-      const joinedEventsData: EventWithParticipants[] = [];
-      for (const event of allEvents) {
-        const isParticipant = await db.isUserParticipant(event.id, user.id);
-        if (isParticipant) {
-          const count = await db.getParticipantCount(event.id);
-          joinedEventsData.push({ ...event, participantCount: count });
-        }
-      }
-      setJoinedEvents(joinedEventsData);
+      // My events (created by me) ve joined events'leri ayır
+      const myEventsFiltered = allEvents.filter(e => e.user_id === user.id);
+      const joinedEventsFiltered = allEvents.filter(e => joinedEventIds.has(e.id));
 
-      // Friend count
-      const friendIds = await db.getFriendIds(user.id);
+      // Tüm gerekli event ID'leri için participant count'ları paralel al
+      const allRelevantEvents = [...new Set([...myEventsFiltered, ...joinedEventsFiltered])];
+      const counts = await Promise.all(
+        allRelevantEvents.map(e => db.getParticipantCount(e.id))
+      );
+      const countMap = new Map(allRelevantEvents.map((e, i) => [e.id, counts[i]]));
+
+      setMyEvents(myEventsFiltered.map(e => ({ ...e, participantCount: countMap.get(e.id) || 0 })));
+      setJoinedEvents(joinedEventsFiltered.map(e => ({ ...e, participantCount: countMap.get(e.id) || 0 })));
       setFriendCount(friendIds.length);
-
-      // Vibe Score
-      const score = await db.calculateVibeScore(user.id);
       setVibeScore(score);
     } catch (error) {
       console.error('Profile data load error:', error);
@@ -245,8 +243,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+      <div className="min-h-screen flex items-center justify-center bg-bg-deep">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+          <p className="text-xs font-bold uppercase tracking-widest opacity-40">Profil yükleniyor...</p>
+        </div>
       </div>
     );
   }

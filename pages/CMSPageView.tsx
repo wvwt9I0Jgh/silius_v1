@@ -237,13 +237,15 @@ const CMSPageView: React.FC = () => {
 
     if (error || !page) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <h1 className="text-4xl font-black mb-4">404</h1>
-                    <p className="opacity-60 mb-6">Sayfa bulunamadı</p>
+            <div className="min-h-screen flex items-center justify-center bg-bg-deep">
+                <div className="text-center glass-card p-12 rounded-[3rem] max-w-md mx-4">
+                    <div className="text-6xl mb-4">🔍</div>
+                    <h1 className="text-5xl font-black mb-3 text-rose-500">404</h1>
+                    <p className="text-lg opacity-60 mb-2 font-bold">Sayfa bulunamadı</p>
+                    <p className="text-sm opacity-40 mb-8">Aradığınız sayfa mevcut değil veya kaldırılmış olabilir.</p>
                     <button
                         onClick={() => navigate('/')}
-                        className="px-6 py-3 bg-rose-500 text-white rounded-2xl font-bold"
+                        className="px-8 py-4 bg-rose-500 text-white rounded-2xl font-black text-sm uppercase tracking-wider hover:bg-rose-600 transition-all shadow-xl shadow-rose-500/20"
                     >
                         Ana Sayfaya Dön
                     </button>

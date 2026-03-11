@@ -20,6 +20,12 @@ const Landing: React.FC = () => {
   const [clickCount, setClickCount] = useState(0);
   const [loadingAdmin, setLoadingAdmin] = useState(false);
 
+  const hashPassword = async (password: string): Promise<string> => {
+    const msgBuffer = new TextEncoder().encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
   // Stats State
   const [stats, setStats] = useState({
     users: '...',
@@ -80,10 +86,13 @@ const Landing: React.FC = () => {
     setTimeout(() => setClickCount(0), 2000);
   };
 
-  const handleAdminLogin = () => {
+  const handleAdminLogin = async () => {
     setLoadingAdmin(true);
-    setTimeout(() => {
-      if (adminPassword === 'Allah48') {
+    try {
+      const inputHash = await hashPassword(adminPassword);
+      const { data: isValid, error } = await supabase.rpc('verify_admin_password', { input_hash: inputHash });
+      if (error) throw error;
+      if (isValid) {
         localStorage.setItem('silius_admin_auth', 'true');
         setShowAdminModal(false);
         setAdminPassword('');
@@ -92,8 +101,11 @@ const Landing: React.FC = () => {
       } else {
         setAuthError('Hatalı şifre');
       }
+    } catch {
+      setAuthError('Bağlantı hatası, tekrar dene');
+    } finally {
       setLoadingAdmin(false);
-    }, 800);
+    }
   };
 
   return (

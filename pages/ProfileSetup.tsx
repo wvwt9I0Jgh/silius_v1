@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, Calendar, Users, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { User, Calendar, Users, ArrowRight, Loader2, Sparkles, AtSign } from 'lucide-react';
 
 const ProfileSetup: React.FC = () => {
     const navigate = useNavigate();
@@ -13,6 +13,7 @@ const ProfileSetup: React.FC = () => {
     const [formData, setFormData] = useState({
         firstName: profile?.firstName || user?.user_metadata?.full_name?.split(' ')[0] || user?.user_metadata?.firstName || '',
         lastName: profile?.lastName || user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || user?.user_metadata?.lastName || '',
+        username: profile?.username || user?.user_metadata?.username || user?.email?.split('@')[0] || '',
         age: '',
         gender: '' as string
     });
@@ -40,6 +41,12 @@ const ProfileSetup: React.FC = () => {
             return;
         }
 
+        if (!formData.username.trim()) {
+            setError('Lütfen kullanıcı adınızı girin.');
+            setIsLoading(false);
+            return;
+        }
+
         if (!formData.age || parseInt(formData.age) < 18 || parseInt(formData.age) > 30) {
             setError('Yaşınız 18-30 arasında olmalıdır.');
             setIsLoading(false);
@@ -56,6 +63,7 @@ const ProfileSetup: React.FC = () => {
             const { error: updateError } = await updateProfile({
                 firstName: formData.firstName.trim(),
                 lastName: formData.lastName.trim(),
+                username: formData.username.trim(),
                 age: parseInt(formData.age),
                 gender: formData.gender as any,
                 isProfileComplete: true
@@ -128,6 +136,22 @@ const ProfileSetup: React.FC = () => {
                                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                                     className="w-full glass rounded-2xl px-6 py-4 text-sm font-semibold focus:border-emerald-500 outline-none"
                                     placeholder="Soyadınız"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Kullanıcı Adı */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black opacity-40 uppercase tracking-widest ml-1">KULLANICI ADI</label>
+                            <div className="relative">
+                                <AtSign className="absolute left-5 top-1/2 -translate-y-1/2 opacity-30 text-emerald-500" size={18} />
+                                <input
+                                    type="text"
+                                    value={formData.username}
+                                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                    className="w-full glass rounded-2xl pl-14 pr-6 py-4 text-sm font-semibold focus:border-emerald-500 outline-none"
+                                    placeholder="Kullanıcı adınız"
+                                    required
                                 />
                             </div>
                         </div>

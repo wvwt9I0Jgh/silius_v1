@@ -1,37 +1,46 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { db } from './database';
 import Landing from './pages/Landing';
 import Auth from './pages/Auth';
-import Home from './pages/Home';
-import EventDetail from './pages/EventDetail';
-import Users from './pages/Users';
-import Friends from './pages/Friends';
-import Profile from './pages/Profile';
-import About from './pages/About';
-import Security from './pages/Security';
-import Guidelines from './pages/Guidelines';
-import Contact from './pages/Contact';
-import HowToUse from './pages/HowToUse';
-import Vibeler from './pages/Vibeler';
-import Topluluk from './pages/Topluluk';
-import Mekanlar from './pages/Mekanlar';
 import Navbar from './components/Navbar';
-import Admin from './pages/Admin';
-import AdminUsers from './pages/admin/AdminUsers';
-import AdminVibes from './pages/admin/AdminVibes';
-import AdminPages from './pages/admin/AdminPages';
-import AdminBans from './pages/admin/AdminBans';
-import PageEditor from './pages/admin/PageEditor';
-import CMSPageView from './pages/CMSPageView';
-import ProfileSetup from './pages/ProfileSetup';
-import CheckInPage from './pages/CheckInPage'; // QR Check-in Page
-import MyQR from './pages/MyQR';
 import BanScreen from './components/BanScreen';
 import { Moon, Sun, Loader2 } from 'lucide-react';
+
+// Lazy-loaded pages — her sayfa ayrı chunk olarak yüklenir
+const Home = lazy(() => import('./pages/Home'));
+const EventDetail = lazy(() => import('./pages/EventDetail'));
+const Users = lazy(() => import('./pages/Users'));
+const Friends = lazy(() => import('./pages/Friends'));
+const Profile = lazy(() => import('./pages/Profile'));
+const About = lazy(() => import('./pages/About'));
+const Security = lazy(() => import('./pages/Security'));
+const Guidelines = lazy(() => import('./pages/Guidelines'));
+const Contact = lazy(() => import('./pages/Contact'));
+const HowToUse = lazy(() => import('./pages/HowToUse'));
+const Vibeler = lazy(() => import('./pages/Vibeler'));
+const Topluluk = lazy(() => import('./pages/Topluluk'));
+const Mekanlar = lazy(() => import('./pages/Mekanlar'));
+const Admin = lazy(() => import('./pages/Admin'));
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
+const AdminVibes = lazy(() => import('./pages/admin/AdminVibes'));
+const AdminPages = lazy(() => import('./pages/admin/AdminPages'));
+const AdminBans = lazy(() => import('./pages/admin/AdminBans'));
+const PageEditor = lazy(() => import('./pages/admin/PageEditor'));
+const CMSPageView = lazy(() => import('./pages/CMSPageView'));
+const ProfileSetup = lazy(() => import('./pages/ProfileSetup'));
+const CheckInPage = lazy(() => import('./pages/CheckInPage'));
+const MyQR = lazy(() => import('./pages/MyQR'));
+
+// Minimal fallback spinner — Suspense boundary için
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-950">
+    <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+  </div>
+);
 
 
 // Protected Route Component - Profil tamamlanmamış kullanıcıları yönlendirir
@@ -98,13 +107,13 @@ const AppContent: React.FC = () => {
   const timeTrackingRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // GÜVENLİK: App seviyesinde de timeout - 4 saniye sonra zorla göster
+    // GÜVENLİK: App seviyesinde de timeout - 2.5 saniye sonra zorla göster
     const forceShowTimeout = setTimeout(() => {
       if (loading) {
-        console.warn('⚠️ App: Force showing UI after 4s');
+        console.warn('⚠️ App: Force showing UI after 2.5s');
         setForceShow(true);
       }
-    }, 4000);
+    }, 2500);
 
     return () => clearTimeout(forceShowTimeout);
   }, [loading]);
@@ -198,6 +207,7 @@ const AppContent: React.FC = () => {
 
         {currentUser && <Navbar user={currentUser} onLogout={handleLogout} />}
 
+        <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={user ? <Navigate to="/home" /> : <Auth />} />
@@ -333,6 +343,7 @@ const AppContent: React.FC = () => {
           {/* 404 - Bilinmeyen URL → Landing sayfasına yönlendir */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </div>
     </Router>
   );
