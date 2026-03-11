@@ -17,6 +17,10 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Large media files (exceeds Cloudflare Pages 25MB limit)
+public/laser-show.mp4
+image-videos/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
