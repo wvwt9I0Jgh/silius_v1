@@ -491,7 +491,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin // Hash kullanma - Supabase kendi hash parametrelerini ekler
+          redirectTo: 'https://silius-v1.pages.dev'
         }
       });
 
