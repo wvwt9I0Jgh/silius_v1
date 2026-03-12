@@ -158,7 +158,7 @@ const Landing: React.FC = () => {
               { name: 'Radar', path: '/vibeler' },
               { name: 'Topluluk', path: '/topluluk' },
               { name: 'Mekanlar', path: '/mekanlar' },
-              { name: 'Çerez Politikasý', path: '/cookie-policy' },
+              { name: 'Ã§erez PolitikasÄ±', path: '/cookie-policy' },
             ].map(link => (
               <Link key={link.name} to={link.path} className="text-[11px] font-bold tracking-[0.2em] text-text-main/50 hover:text-text-main uppercase transition-colors">
                 {link.name}
@@ -525,7 +525,7 @@ const Landing: React.FC = () => {
               <div className="space-y-4">
                 <h4 className="text-text-main/30 font-bold uppercase tracking-widest text-[10px] font-mono">Sistem</h4>
                 <ul className="space-y-3">                    <li><Link to="/nasil-kullanilir" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">NasÄ±l KullanÄ±lÄ±r?</Link></li>                  <li><Link to="/about" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Manifesto</Link></li>
-                  <li><Link to="/cookie-policy" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Çerez Politikasý</Link></li>`n                  <li><Link to="/guidelines" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Kurallar</Link></li>
+                  <li><Link to="/cookie-policy" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">ï¿½erez Politikasï¿½</Link></li>`n                  <li><Link to="/guidelines" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Kurallar</Link></li>
                 </ul>
               </div>
             </div>
