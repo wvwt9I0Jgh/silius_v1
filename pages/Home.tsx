@@ -643,9 +643,9 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
         {/* Create Modal */}
         {showCreateModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300">
+          <div className="fixed inset-0 z-[100] flex items-start md:items-center justify-center pt-3 pb-24 md:py-4 px-3 md:p-4 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300">
             <div
-              className="relative w-full max-w-2xl bg-slate-900 rounded-[3rem] p-8 md:p-12 border border-white/10 shadow-2xl overflow-y-auto scrollbar-hide max-h-[90vh]"
+              className="relative w-full max-w-2xl bg-slate-900 rounded-[2rem] md:rounded-[3rem] p-5 md:p-12 border border-white/10 shadow-2xl overflow-y-auto scrollbar-hide max-h-[calc(100dvh-88px)] md:max-h-[90vh]"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Glows */}
@@ -653,8 +653,8 @@ const Home: React.FC<HomeProps> = ({ user }) => {
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-500/10 blur-[80px] pointer-events-none"></div>
 
               <div className="relative z-10">
-                <div className="flex justify-between items-start mb-10">
-                  <h2 className="text-3xl md:text-4xl font-black font-outfit tracking-tighter uppercase italic text-text-main">
+                <div className="flex justify-between items-start mb-5 md:mb-10">
+                  <h2 className="text-2xl md:text-4xl font-black font-outfit tracking-tighter uppercase italic text-text-main">
                     YENİ <span className="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-cyan-400">PARTİ</span> YARAT
                   </h2>
                   <button onClick={() => setShowCreateModal(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white transition-all">
@@ -662,12 +662,12 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                   </button>
                 </div>
 
-                <form onSubmit={handleCreateEvent} className="space-y-8">
+                <form onSubmit={handleCreateEvent} className="space-y-4 md:space-y-8">
                     <div className="space-y-4">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Kapak Görseli</label>
                     <div
                       onClick={() => fileInputRef.current?.click()}
-                      className="relative h-48 md:h-64 rounded-[2rem] border-2 border-dashed border-white/10 hover:border-rose-500/50 hover:bg-white/5 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center group"
+                      className="relative h-36 md:h-64 rounded-[2rem] border-2 border-dashed border-white/10 hover:border-rose-500/50 hover:bg-white/5 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center group"
                     >
                       {newEvent.image ? (
                         <>
@@ -801,8 +801,8 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                     />
                   </div>
 
-                  <div className="pt-4 flex gap-4">
-                    <button type="button" onClick={() => setShowCreateModal(false)} className="px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest text-slate-500 hover:text-white hover:bg-white/5 transition-all">
+                  <div className="pt-2 md:pt-4 flex gap-4 sticky bottom-0 bg-slate-900 pb-1">
+                    <button type="button" onClick={() => setShowCreateModal(false)} className="px-6 md:px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest text-slate-500 hover:text-white hover:bg-white/5 transition-all">
                       İPTAL
                     </button>
                     <button type="submit" disabled={isCreating} className="flex-1 bg-gradient-to-r from-fuchsia-600 to-violet-500 hover:to-fuchsia-400 text-white rounded-2xl py-4 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-fuchsia-500/20 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-2">

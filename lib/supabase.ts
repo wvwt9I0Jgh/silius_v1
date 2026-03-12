@@ -48,3 +48,15 @@ export const supabaseAdmin = supabaseServiceKey
 // Helper to check if admin client is available
 export const hasAdminClient = !!supabaseServiceKey;
 
+// Keep-alive ping: Supabase free tier pauses after inactivity.
+// Ping every 4 minutes in production to keep the connection warm.
+if (import.meta.env.PROD) {
+  setInterval(async () => {
+    try {
+      await supabase.from('users').select('id').limit(1);
+    } catch {
+      // silently ignore
+    }
+  }, 4 * 60 * 1000);
+}
+
