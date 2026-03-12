@@ -1,22 +1,30 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles, Zap, Heart, Home } from 'lucide-react';
+import { ArrowLeft, Sparkles, Zap, Heart, Home, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 const About: React.FC = () => {
   const navigate = useNavigate();
+  const { isDarkMode, toggleTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-[var(--bg-deep)] transition-colors duration-500 p-6 md:p-12 relative overflow-hidden">
       <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/5 blur-[150px] rounded-full"></div>
       
-      <button 
-        onClick={() => navigate(-1)}
-        className="relative z-20 flex items-center gap-3 px-6 py-3 glass rounded-2xl border border-indigo-500/20 transition-all group backdrop-blur-xl mb-16"
-      >
-        <ArrowLeft size={18} className="text-rose-500 group-hover:-translate-x-2 transition-transform" />
-        <span className="text-[10px] font-black uppercase tracking-[0.2em]">GERİ DÖN</span>
-      </button>
+      <div className="flex justify-between items-center mb-16 relative z-20">
+        <button 
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-3 px-6 py-3 glass rounded-2xl border border-indigo-500/20 transition-all group backdrop-blur-xl"
+        >
+          <ArrowLeft size={18} className="text-rose-500 group-hover:-translate-x-2 transition-transform" />
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-main">GERİ DÖN</span>
+        </button>
+
+        <button onClick={toggleTheme} className="p-3 rounded-full hover:bg-text-main/10 text-text-main/50 hover:text-text-main transition-colors">
+          {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
+      </div>
 
       <div className="max-w-4xl mx-auto relative z-10">
         <h1 className="text-5xl md:text-8xl font-black font-outfit uppercase tracking-tighter italic mb-8">

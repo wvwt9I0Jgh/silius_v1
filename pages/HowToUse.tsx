@@ -16,7 +16,7 @@ const HowToUse: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-[#03000a] text-white selection:bg-cyan-400 selection:text-black overflow-hidden font-sans">
+    <div className="relative min-h-screen bg-bg-deep text-white selection:bg-cyan-400 selection:text-black overflow-hidden font-sans">
       
       {/* Gritty Noise Overlay */}
       <div className="fixed inset-0 opacity-[0.06] pointer-events-none mix-blend-screen z-[100]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")' }} />
@@ -104,7 +104,7 @@ const HowToUse: React.FC = () => {
             <h2 className="text-[10rem] font-black font-outfit text-white/[0.03] leading-none absolute -z-10 -ml-12 -mt-16 group-hover:text-fuchsia-500/[0.05] transition-colors duration-700">02</h2>
             <div className="flex items-center gap-4">
               <div className="h-[1px] flex-1 bg-white/20 group-hover:bg-fuchsia-500/50 transition-colors" />
-              <span className="bg-[#03000a] border border-white/20 text-white px-3 py-1 font-black uppercase text-xs tracking-widest group-hover:border-fuchsia-500 transition-colors">Neden Kullanılır?</span>
+              <span className="bg-bg-deep border border-white/20 text-white px-3 py-1 font-black uppercase text-xs tracking-widest group-hover:border-fuchsia-500 transition-colors">Neden Kullanılır?</span>
             </div>
             <h3 className="text-4xl font-outfit font-black uppercase tracking-tight text-white group-hover:text-fuchsia-500 transition-colors md:text-right">
               Çünkü Ritmi <br/>Kırmak İstersin.

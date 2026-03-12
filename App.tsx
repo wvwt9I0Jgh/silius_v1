@@ -215,7 +215,7 @@ const AppContent: React.FC = () => {
           <Route path="/auth" element={user ? <Navigate to="/home" /> : <Auth />} />
           <Route path="/about" element={<About />} />
           <Route path="/security" element={<Security />} />
-          <Route path="/guidelines" element={<Guidelines />} />
+          <Route path="/guidelines" element={<Guidelines />} />`n          <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/nasil-kullanilir" element={<HowToUse />} />
           <Route path="/vibeler" element={<Vibeler />} />

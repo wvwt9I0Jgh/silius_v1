@@ -92,7 +92,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     if (!file) return;
 
     // Dosya tipi kontrolü
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith('image/') && !file.name.toLowerCase().endsWith('.heic') && !file.name.toLowerCase().endsWith('.heif')) {
       alert('Lütfen bir resim dosyası seçin!');
       return;
     }
@@ -285,7 +285,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*, .heic, .heif, image/heic, image/heif"
               onChange={handleFileUpload}
               className="hidden"
             />

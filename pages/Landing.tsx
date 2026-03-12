@@ -109,7 +109,7 @@ const Landing: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen font-sans overflow-x-hidden bg-[#03000a] text-white selection:bg-fuchsia-500 selection:text-white">
+    <div className="relative min-h-screen font-sans overflow-x-hidden bg-bg-deep text-text-main selection:bg-fuchsia-500 selection:text-text-main">
 
       {/* Extreme Gritty Noise Overlay */}
       <div className="fixed inset-0 opacity-[0.05] pointer-events-none mix-blend-screen z-[100]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")' }} />
@@ -120,20 +120,20 @@ const Landing: React.FC = () => {
       {/* Admin Modal */}
       {showAdminModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={() => setShowAdminModal(false)} />
+          <div className="absolute inset-0 bg-bg-surface/80 backdrop-blur-xl" onClick={() => setShowAdminModal(false)} />
           <div className="relative w-full max-w-sm rounded-[2rem] p-8 border shadow-[0_0_50px_rgba(217,70,239,0.3)] bg-[#0a0514] border-fuchsia-500/30">
-            <button onClick={() => setShowAdminModal(false)} className="absolute top-6 right-6 text-white/50 hover:text-white"><X size={24} /></button>
+            <button onClick={() => setShowAdminModal(false)} className="absolute top-6 right-6 text-text-main/50 hover:text-text-main"><X size={24} /></button>
             <div className="text-left mb-8">
               <div className="w-12 h-12 bg-fuchsia-500 rounded-lg flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(217,70,239,0.5)]">
-                <Shield className="text-white" size={24} />
+                <Shield className="text-text-main" size={24} />
               </div>
-              <h3 className="font-outfit text-2xl font-black uppercase tracking-widest text-white">Yönetici</h3>
-              <p className="text-white/50 text-sm mt-1">Sistem erişimi gerekiyor.</p>
+              <h3 className="font-outfit text-2xl font-black uppercase tracking-widest text-text-main">Yönetici</h3>
+              <p className="text-text-main/50 text-sm mt-1">Sistem erişimi gerekiyor.</p>
             </div>
             <div className="space-y-4">
-              <input type="password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdminLogin()} placeholder="Erişim Kodu" className="w-full px-5 py-4 bg-black border border-white/10 rounded-xl outline-none focus:border-fuchsia-500 text-white placeholder:text-white/30 font-mono transition-colors tracking-widest" autoFocus />
+              <input type="password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdminLogin()} placeholder="Erişim Kodu" className="w-full px-5 py-4 bg-bg-surface border border-white/10 rounded-xl outline-none focus:border-fuchsia-500 text-text-main placeholder:text-text-main/30 font-mono transition-colors tracking-widest" autoFocus />
               {authError && <p className="text-fuchsia-500 text-xs font-bold uppercase tracking-widest">{authError}</p>}
-              <button onClick={handleAdminLogin} disabled={loadingAdmin} className="w-full py-4 bg-white text-black font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-fuchsia-400 transition-colors">
+              <button onClick={handleAdminLogin} disabled={loadingAdmin} className="w-full py-4 bg-white text-bg-deep font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-fuchsia-400 transition-colors">
                 {loadingAdmin ? 'ONAYLANIYOR...' : 'SİSTEME GİR'} <ArrowRight size={18} />
               </button>
             </div>
@@ -142,34 +142,35 @@ const Landing: React.FC = () => {
       )}
 
       {/* Cyber-Navbar */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrollY > 20 ? 'py-4 bg-[#03000a]/80 backdrop-blur-2xl border-b border-white/5' : 'py-6 bg-transparent'}`}>
+      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrollY > 20 ? 'py-4 bg-bg-deep/80 backdrop-blur-2xl border-b border-white/5' : 'py-6 bg-transparent'}`}>
         <div className="max-w-[1400px] mx-auto px-6 flex justify-between items-center">
           <button onClick={handleLogoClick} className="flex items-center gap-3 group relative">
             <div className="absolute inset-0 bg-fuchsia-500 rounded-full blur-md opacity-0 group-hover:opacity-60 transition-opacity" />
             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center relative z-10">
-              <ScanLine size={20} className="text-black" />
+              <ScanLine size={20} className="text-bg-deep" />
             </div>
-            <span className="text-2xl font-black font-outfit uppercase tracking-tighter text-white">Silius</span>
+            <span className="text-2xl font-black font-outfit uppercase tracking-tighter text-text-main">Silius</span>
           </button>
 
-          <div className="hidden md:flex items-center gap-6 border border-white/10 bg-white/5 px-6 py-2.5 rounded-full backdrop-blur-md">
+          <div className="hidden md:flex items-center gap-6 border border-white/10 bg-text-main/5 px-6 py-2.5 rounded-full backdrop-blur-md">
             {[
               { name: 'Nasıl Kullanılır?', path: '/nasil-kullanilir' },
               { name: 'Radar', path: '/vibeler' },
               { name: 'Topluluk', path: '/topluluk' },
               { name: 'Mekanlar', path: '/mekanlar' },
+              { name: '�erez Politikas�', path: '/cookie-policy' },
             ].map(link => (
-              <Link key={link.name} to={link.path} className="text-[11px] font-bold tracking-[0.2em] text-white/50 hover:text-white uppercase transition-colors">
+              <Link key={link.name} to={link.path} className="text-[11px] font-bold tracking-[0.2em] text-text-main/50 hover:text-text-main uppercase transition-colors">
                 {link.name}
               </Link>
             ))}
           </div>
 
           <div className="flex items-center gap-4">
-            <button onClick={toggleTheme} className="hidden md:flex p-3 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-colors">
+            <button onClick={toggleTheme} className="hidden md:flex p-3 rounded-full hover:bg-text-main/10 text-text-main/50 hover:text-text-main transition-colors">
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <Link to={user ? "/home" : "/auth"} className="relative group px-6 py-3 overflow-hidden rounded-full border border-fuchsia-500/50 bg-fuchsia-500/10 text-fuchsia-400 text-[11px] font-bold uppercase tracking-[0.2em] hover:text-white transition-colors flex items-center gap-2">
+            <Link to={user ? "/home" : "/auth"} className="relative group px-6 py-3 overflow-hidden rounded-full border border-fuchsia-500/50 bg-fuchsia-500/10 text-fuchsia-400 text-[11px] font-bold uppercase tracking-[0.2em] hover:text-text-main transition-colors flex items-center gap-2">
               <span className="absolute inset-0 bg-fuchsia-500 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
               <span className="relative z-10">{user ? 'RADARA DÖN' : 'Kayıt / Giriş'}</span>
             </Link>
@@ -178,7 +179,7 @@ const Landing: React.FC = () => {
       </nav>
 
       {/* Cyber-Rave Hero */}
-      <header className="relative min-h-screen flex items-center justify-center pt-24 pb-20 overflow-hidden bg-[#03000a]">
+      <header className="relative min-h-screen flex items-center justify-center pt-24 pb-20 overflow-hidden bg-bg-deep">
         {/* Abstract light pools */}
         <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-fuchsia-600/20 rounded-full blur-[150px] mix-blend-screen animate-pulse" />
         <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-cyan-600/20 rounded-full blur-[120px] mix-blend-screen animate-pulse" style={{ animationDelay: "1s" }} />
@@ -195,17 +196,17 @@ const Landing: React.FC = () => {
                 <span className="block text-fuchsia-500 drop-shadow-[0_0_40px_rgba(217,70,239,0.4)] hover:translate-x-4 transition-transform duration-500 cursor-default">YAŞA.</span>
               </h1>
               
-              <p className="max-w-md text-lg md:text-xl text-white/60 font-light leading-relaxed border-l-2 border-cyan-500 pl-6">
+              <p className="max-w-md text-lg md:text-xl text-text-main/60 font-light leading-relaxed border-l-2 border-cyan-500 pl-6">
                 Şehrin yeraltı ritmine katıl. Gizli mekanlar, özel partiler ve seninle aynı frekansta olan insanlar. Algoritmalara değil, <span className="text-cyan-400 font-bold drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]">bass'a güven.</span>
               </p>
               
               <div className="flex flex-wrap gap-4 pt-4 w-full sm:w-auto">
-                <Link to={user ? "/home" : "/auth"} className="relative group overflow-hidden bg-white text-black px-8 py-5 flex items-center justify-center gap-4 font-black tracking-widest uppercase transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_50px_rgba(255,255,255,0.5)] flex-1 sm:flex-none">
+                <Link to={user ? "/home" : "/auth"} className="relative group overflow-hidden bg-white text-bg-deep px-8 py-5 flex items-center justify-center gap-4 font-black tracking-widest uppercase transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_50px_rgba(255,255,255,0.5)] flex-1 sm:flex-none">
                    <div className="absolute inset-0 bg-fuchsia-400 -translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                    <Ticket size={24} className="relative z-10 group-hover:-rotate-12 transition-transform" />
                    <span className="relative z-10">Listeye Gir</span>
                 </Link>
-                <a href="#discover" className="px-8 py-5 border border-white/20 hover:border-white/50 text-white font-bold tracking-widest uppercase transition-all backdrop-blur-sm bg-white/5 flex items-center justify-center gap-3 flex-1 sm:flex-none">
+                <a href="#discover" className="px-8 py-5 border border-white/20 hover:border-white/50 text-text-main font-bold tracking-widest uppercase transition-all backdrop-blur-sm bg-text-main/5 flex items-center justify-center gap-3 flex-1 sm:flex-none">
                   <Volume2 size={24} /> Ses Aç
                 </a>
               </div>
@@ -216,18 +217,18 @@ const Landing: React.FC = () => {
               <div className="absolute top-0 right-0 w-[85%] h-[75%] bg-slate-900 border border-white/10 overflow-hidden transform rotate-y-[10deg] rotate-z-[4deg] shadow-[0_30px_60px_rgba(0,0,0,0.8)] animate-float z-10">
                 <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1000&q=80" className="w-full h-full object-cover mix-blend-luminosity opacity-70 filter contrast-125 hover:scale-110 hover:opacity-100 transition-all duration-1000" alt="Rave" />
                 <div className="absolute inset-0 bg-gradient-to-tr from-fuchsia-600/50 mix-blend-overlay pointer-events-none" />
-                <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md px-3 py-1 font-mono text-[10px] text-fuchsia-400 border border-fuchsia-500/30">REC // 04:23 AM</div>
+                <div className="absolute top-4 right-4 bg-bg-surface/50 backdrop-blur-md px-3 py-1 font-mono text-[10px] text-fuchsia-400 border border-fuchsia-500/30">REC // 04:23 AM</div>
               </div>
               
-              <div className="absolute bottom-4 left-0 lg:-left-10 w-[70%] h-[55%] bg-[#03000a] border border-cyan-500/40 overflow-hidden transform -rotate-y-[10deg] -rotate-z-[3deg] shadow-[0_0_40px_rgba(34,211,238,0.15)] animate-float animation-delay-2000 p-6 flex flex-col justify-end z-20">
+              <div className="absolute bottom-4 left-0 lg:-left-10 w-[70%] h-[55%] bg-bg-deep border border-cyan-500/40 overflow-hidden transform -rotate-y-[10deg] -rotate-z-[3deg] shadow-[0_0_40px_rgba(34,211,238,0.15)] animate-float animation-delay-2000 p-6 flex flex-col justify-end z-20">
                  <img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80" className="absolute inset-0 w-full h-full object-cover opacity-30 grayscale filter contrast-150" alt="DJ" />
                  <div className="absolute inset-0 bg-gradient-to-t from-[#03000a] via-[#03000a]/50 to-transparent pointer-events-none" />
                  <div className="relative z-10 border-l-4 border-cyan-400 pl-5">
                    <div className="flex items-center gap-2 mb-2">
                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                     <span className="text-white/60 font-bold tracking-widest text-[10px] uppercase font-mono">Live Session</span>
+                     <span className="text-text-main/60 font-bold tracking-widest text-[10px] uppercase font-mono">Live Session</span>
                    </div>
-                   <h3 className="text-white font-black text-3xl uppercase tracking-tighter leading-none">Underground <br/>Warehouse</h3>
+                   <h3 className="text-text-main font-black text-3xl uppercase tracking-tighter leading-none">Underground <br/>Warehouse</h3>
                    <div className="flex items-center gap-4 mt-4">
                      <div className="flex -space-x-3">
                         {[1,2,3].map(i => <div key={i} className="w-10 h-10 rounded-full border-2 border-[#03000a] bg-slate-800 overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=rave${i}`} className="w-full h-full object-cover" /></div>)}
@@ -239,31 +240,31 @@ const Landing: React.FC = () => {
 
               {/* Decorative elements */}
               <div className="absolute top-[20%] -left-10 w-24 h-24 bg-rose-500 rounded-full blur-[40px] opacity-30 animate-pulse animation-delay-1000 z-0" />
-              <BarcodeDecor className="absolute -right-8 bottom-1/4 transform rotate-90 text-white/20 hidden lg:block" />
+              <BarcodeDecor className="absolute -right-8 bottom-1/4 transform rotate-90 text-text-main/20 hidden lg:block" />
            </div>
         </div>
       </header>
 
       {/* Manifesto / Stats Marquee */}
-      <div className="w-full relative overflow-hidden bg-fuchsia-600 py-6 transform -skew-y-2 origin-left border-y border-black shadow-[0_0_50px_rgba(217,70,239,0.2)] z-20 my-10">
+      <div className="w-full relative overflow-hidden bg-fuchsia-600 py-6 transform -skew-y-2 origin-left border-y border-bg-surface shadow-[0_0_50px_rgba(217,70,239,0.2)] z-20 my-10">
         <div className="inline-flex animate-[marquee_20s_linear_infinite] whitespace-nowrap items-center w-[200%]">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="flex items-center gap-16 px-8">
-              <span className="text-black font-black font-outfit text-5xl uppercase tracking-tighter mix-blend-overlay">SIRADANLIĞI REDDET</span>
-              <X size={40} className="text-black opacity-30" />
-              <span className="text-black font-black font-outfit text-5xl uppercase tracking-tighter drop-shadow-[2px_2px_0_rgba(255,255,255,0.5)]">{stats.users} RAVER</span>
-              <X size={40} className="text-black opacity-30" />
-              <span className="text-black font-black font-outfit text-5xl uppercase tracking-tighter mix-blend-overlay">GİZLİ MEKANLAR</span>
-              <X size={40} className="text-black opacity-30" />
-              <span className="text-black font-black font-outfit text-5xl uppercase tracking-tighter drop-shadow-[2px_2px_0_rgba(255,255,255,0.5)]">{stats.events} PARTİ</span>
-              <X size={40} className="text-black opacity-30" />
+              <span className="text-bg-deep font-black font-outfit text-5xl uppercase tracking-tighter mix-blend-overlay">SIRADANLIĞI REDDET</span>
+              <X size={40} className="text-bg-deep opacity-30" />
+              <span className="text-bg-deep font-black font-outfit text-5xl uppercase tracking-tighter drop-shadow-[2px_2px_0_rgba(255,255,255,0.5)]">{stats.users} RAVER</span>
+              <X size={40} className="text-bg-deep opacity-30" />
+              <span className="text-bg-deep font-black font-outfit text-5xl uppercase tracking-tighter mix-blend-overlay">GİZLİ MEKANLAR</span>
+              <X size={40} className="text-bg-deep opacity-30" />
+              <span className="text-bg-deep font-black font-outfit text-5xl uppercase tracking-tighter drop-shadow-[2px_2px_0_rgba(255,255,255,0.5)]">{stats.events} PARTİ</span>
+              <X size={40} className="text-bg-deep opacity-30" />
             </div>
           ))}
         </div>
       </div>
 
       {/* RİTMİ YAKALA Section - Raw Brutalism Discover */}
-      <section id="discover" className="py-24 md:py-40 relative bg-[#03000a] z-10">
+      <section id="discover" className="py-24 md:py-40 relative bg-bg-deep z-10">
         {/* Subtle grid in background */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
         
@@ -276,14 +277,14 @@ const Landing: React.FC = () => {
                   <div className="h-[2px] w-8 bg-cyan-400" />
                   <span className="text-cyan-400 font-bold tracking-[0.3em] text-xs uppercase font-mono">Radar Sistemi</span>
                 </div>
-                <h2 className="text-5xl sm:text-6xl lg:text-7xl font-black font-outfit uppercase leading-[0.85] tracking-tighter text-white">
+                <h2 className="text-5xl sm:text-6xl lg:text-7xl font-black font-outfit uppercase leading-[0.85] tracking-tighter text-text-main">
                   RİTMİ <br/>
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-cyan-400 animate-gradient-x">YAKALA.</span>
                 </h2>
               </div>
               
-              <p className="text-white/60 text-lg font-light leading-relaxed border-l border-white/20 pl-6 py-2">
-                Sadece davetlilerin bildiği ev partileri, terkedilmiş depolardaki raveler ve şehrin en iyi club geceleri. Hepsi tek bir radarın ucunda. <b className="text-white font-medium">Bilet almak için sırada bekleme, QR ile direkt mekana dal.</b>
+              <p className="text-text-main/60 text-lg font-light leading-relaxed border-l border-white/20 pl-6 py-2">
+                Sadece davetlilerin bildiği ev partileri, terkedilmiş depolardaki raveler ve şehrin en iyi club geceleri. Hepsi tek bir radarın ucunda. <b className="text-text-main font-medium">Bilet almak için sırada bekleme, QR ile direkt mekana dal.</b>
               </p>
               
               <div className="space-y-8 pt-4">
@@ -297,8 +298,8 @@ const Landing: React.FC = () => {
                        <item.icon size={28} strokeWidth={1.5} />
                      </div>
                      <div className="pt-1 w-full">
-                       <h4 className="font-black text-white text-lg tracking-wider uppercase mb-1">{item.title}</h4>
-                       <p className="text-sm text-white/50 leading-relaxed group-hover:text-white/80 transition-colors">{item.desc}</p>
+                       <h4 className="font-black text-text-main text-lg tracking-wider uppercase mb-1">{item.title}</h4>
+                       <p className="text-sm text-text-main/50 leading-relaxed group-hover:text-text-main/80 transition-colors">{item.desc}</p>
                        <div className={`h-[1px] w-0 bg-current mt-4 group-hover:w-full transition-all duration-500 opacity-20 ${item.color}`} />
                      </div>
                   </div>
@@ -320,8 +321,8 @@ const Landing: React.FC = () => {
                   </div>
 
                   <div className="absolute bottom-8 left-8 right-8">
-                     <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter leading-none mb-3">Karanlık<br/>Odalar</h3>
-                     <div className="w-full h-[1px] bg-white/10 relative overflow-hidden mb-3">
+                     <h3 className="text-3xl md:text-4xl font-black text-text-main uppercase tracking-tighter leading-none mb-3">Karanlık<br/>Odalar</h3>
+                     <div className="w-full h-[1px] bg-text-main/10 relative overflow-hidden mb-3">
                        <div className="absolute inset-y-0 left-0 w-full bg-cyan-500 -translate-x-full group-hover:translate-x-0 transition-transform duration-700 ease-out" />
                      </div>
                      <p className="text-cyan-400 text-xs font-bold tracking-[0.2em] font-mono">TECHNO & ACID / ENDÜSTRİYEL</p>
@@ -341,8 +342,8 @@ const Landing: React.FC = () => {
                   </div>
 
                   <div className="absolute bottom-8 left-8 right-8">
-                     <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter leading-none mb-3">Özel Ev<br/>Partileri</h3>
-                     <div className="w-full h-[1px] bg-white/10 relative overflow-hidden mb-3">
+                     <h3 className="text-3xl md:text-4xl font-black text-text-main uppercase tracking-tighter leading-none mb-3">Özel Ev<br/>Partileri</h3>
+                     <div className="w-full h-[1px] bg-text-main/10 relative overflow-hidden mb-3">
                        <div className="absolute inset-y-0 left-0 w-full bg-fuchsia-500 -translate-x-full group-hover:translate-x-0 transition-transform duration-700 ease-out" />
                      </div>
                      <p className="text-fuchsia-400 text-xs font-bold tracking-[0.2em] font-mono">GİZLİ LOKASYONLAR</p>
@@ -357,11 +358,11 @@ const Landing: React.FC = () => {
                   
                   <div className="absolute bottom-8 left-8 md:top-1/2 md:-translate-y-1/2 md:max-w-md">
                      <div className="inline-block px-4 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold tracking-[0.3em] uppercase font-mono mb-6 backdrop-blur-md">Açık Hava & Sokak</div>
-                     <h3 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter leading-[0.9] mb-4 group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all">Şehri Uykusundan <br/><span className="text-emerald-400">Uyandır.</span></h3>
-                     <p className="text-white/50 text-sm md:text-base font-light hidden md:block">Güneşin doğuşunu sahilde karşılamak veya şehrin sokaklarında block party ruhunu yaşamak isteyenler için.</p>
+                     <h3 className="text-4xl md:text-5xl font-black text-text-main uppercase tracking-tighter leading-[0.9] mb-4 group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all">Şehri Uykusundan <br/><span className="text-emerald-400">Uyandır.</span></h3>
+                     <p className="text-text-main/50 text-sm md:text-base font-light hidden md:block">Güneşin doğuşunu sahilde karşılamak veya şehrin sokaklarında block party ruhunu yaşamak isteyenler için.</p>
                   </div>
                   
-                  <div className="absolute right-8 bottom-8 md:top-1/2 md:-translate-y-1/2 w-16 h-16 rounded-full border-2 border-emerald-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-500 bg-black/40 backdrop-blur-md">
+                  <div className="absolute right-8 bottom-8 md:top-1/2 md:-translate-y-1/2 w-16 h-16 rounded-full border-2 border-emerald-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-500 bg-bg-surface/40 backdrop-blur-md">
                      <ArrowRight size={24} className="text-emerald-400" />
                   </div>
                </Link>
@@ -372,7 +373,7 @@ const Landing: React.FC = () => {
       </section>
 
       {/* 🎶 Parti Kategorileri - Underground Cyber-Rave Redesign */}
-      <section className="py-32 relative overflow-hidden bg-[#03000a] border-t border-fuchsia-500/10">
+      <section className="py-32 relative overflow-hidden bg-bg-deep border-t border-fuchsia-500/10">
         {/* Gritty Noise & Grid Overlay */}
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")' }} />
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
@@ -388,7 +389,7 @@ const Landing: React.FC = () => {
               <div className="h-[2px] w-12 bg-gradient-to-r from-fuchsia-500 to-cyan-500" />
               <span className="text-fuchsia-400 font-bold tracking-[0.3em] text-xs uppercase font-outfit block">Parti Zamanı</span>
             </div>
-            <h2 className="text-5xl md:text-8xl font-black font-outfit uppercase tracking-tighter text-white leading-[0.9] relative group">
+            <h2 className="text-5xl md:text-8xl font-black font-outfit uppercase tracking-tighter text-text-main leading-[0.9] relative group">
               <span className="block opacity-40 transform translate-y-4 group-hover:translate-y-2 group-hover:opacity-20 transition-all duration-500">PARTİ</span>
               <span className="relative z-10 block text-transparent bg-clip-text bg-gradient-to-br from-white to-white/60 drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">KATEGORİLERİ</span>
             </h2>
@@ -397,8 +398,8 @@ const Landing: React.FC = () => {
           <Link to="/mekanlar" className="relative group overflow-hidden rounded-full p-[1px] shrink-0 self-start md:self-auto mt-4 md:mt-0">
             <span className="absolute inset-0 bg-gradient-to-r from-fuchsia-500 via-cyan-500 to-fuchsia-500 bg-[length:200%_auto] animate-gradient-x opacity-70 group-hover:opacity-100 transition-opacity" />
             <div className="relative bg-slate-950 px-8 py-4 rounded-full flex items-center gap-3 transition-all group-hover:bg-transparent duration-300">
-              <span className="font-outfit font-bold text-white uppercase tracking-widest text-sm">Tümünü Gör</span>
-              <ArrowRight size={16} className="text-cyan-400 group-hover:translate-x-1 group-hover:text-white transition-all" />
+              <span className="font-outfit font-bold text-text-main uppercase tracking-widest text-sm">Tümünü Gör</span>
+              <ArrowRight size={16} className="text-cyan-400 group-hover:translate-x-1 group-hover:text-text-main transition-all" />
             </div>
           </Link>
         </div>
@@ -431,7 +432,7 @@ const Landing: React.FC = () => {
 
                 {/* Vertical Text (Default state on desktop) */}
                 <div className="absolute inset-0 hidden md:flex items-center justify-center opacity-100 group-hover:opacity-0 transition-opacity duration-300 pointer-events-none">
-                  <span className="text-white font-outfit font-black text-3xl uppercase tracking-[0.2em] -rotate-90 whitespace-nowrap opacity-40 group-hover:opacity-0 transition-all duration-300">
+                  <span className="text-text-main font-outfit font-black text-3xl uppercase tracking-[0.2em] -rotate-90 whitespace-nowrap opacity-40 group-hover:opacity-0 transition-all duration-300">
                     {cat.name}
                   </span>
                 </div>
@@ -444,7 +445,7 @@ const Landing: React.FC = () => {
                     </span>
                   </div>
                   
-                  <h3 className="text-3xl md:text-5xl lg:text-6xl font-black font-outfit text-white uppercase tracking-tighter leading-none mb-4 drop-shadow-[0_4px_24px_rgba(0,0,0,1)]">
+                  <h3 className="text-3xl md:text-5xl lg:text-6xl font-black font-outfit text-text-main uppercase tracking-tighter leading-none mb-4 drop-shadow-[0_4px_24px_rgba(0,0,0,1)]">
                     {cat.name.split(' ').map((word, idx) => (
                       <span key={idx} className="block">{word}</span>
                     ))}
@@ -453,21 +454,21 @@ const Landing: React.FC = () => {
                   <div className={`w-0 h-1 bg-gradient-to-r ${cat.gradient} group-hover:w-full transition-all duration-1000 delay-300 mb-6`} />
                   
                   <div className="flex items-center gap-3 transform md:translate-y-8 group-hover:translate-y-0 transition-all duration-700 delay-300 opacity-0 group-hover:opacity-100">
-                    <div className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md bg-white/5">
+                    <div className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-md bg-text-main/5">
                       <ArrowRight size={16} className={cat.textColors} />
                     </div>
-                    <span className="text-white/80 font-medium text-sm tracking-wide uppercase">Keşfet</span>
+                    <span className="text-text-main/80 font-medium text-sm tracking-wide uppercase">Keşfet</span>
                   </div>
                 </div>
                 
                 {/* Mobile specific persistent content so it's not totally blank before tap */}
                 <div className="absolute right-6 bottom-6 md:hidden opacity-100 group-hover:opacity-0 transition-opacity">
-                  <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
-                    <Plus size={20} className="text-white" />
+                  <div className="w-10 h-10 rounded-full bg-text-main/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                    <Plus size={20} className="text-text-main" />
                   </div>
                 </div>
                 <div className="absolute left-6 bottom-6 md:hidden opacity-100 group-hover:opacity-0 transition-opacity">
-                   <h3 className="text-2xl font-black font-outfit text-white uppercase tracking-tighter">
+                   <h3 className="text-2xl font-black font-outfit text-text-main uppercase tracking-tighter">
                     {cat.name}
                   </h3>
                 </div>
@@ -478,22 +479,22 @@ const Landing: React.FC = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-40 relative bg-[#03000a] flex items-center justify-center overflow-hidden border-t border-fuchsia-500/10">
+      <section className="py-40 relative bg-bg-deep flex items-center justify-center overflow-hidden border-t border-fuchsia-500/10">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(217,70,239,0.15)_0%,rgba(0,0,0,0)_60%)] pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent pointer-events-none" />
         
         <div className="relative z-10 text-center px-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 border border-white/10 bg-white/5 rounded-full mb-8 backdrop-blur-sm">
+          <div className="inline-flex items-center gap-2 px-4 py-2 border border-white/10 bg-text-main/5 rounded-full mb-8 backdrop-blur-sm">
              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-             <span className="text-[10px] font-bold text-white/50 tracking-widest uppercase">Girişler Açık</span>
+             <span className="text-[10px] font-bold text-text-main/50 tracking-widest uppercase">Girişler Açık</span>
           </div>
-          <h2 className="text-[5rem] md:text-[10rem] lg:text-[12rem] font-black font-outfit uppercase tracking-tighter leading-[0.8] text-white opacity-90 mb-12 drop-shadow-[0_0_50px_rgba(217,70,239,0.3)] hover:scale-105 transition-transform duration-700 cursor-default">
+          <h2 className="text-[5rem] md:text-[10rem] lg:text-[12rem] font-black font-outfit uppercase tracking-tighter leading-[0.8] text-text-main opacity-90 mb-12 drop-shadow-[0_0_50px_rgba(217,70,239,0.3)] hover:scale-105 transition-transform duration-700 cursor-default">
             SAHNEYE<br/>ÇIK
           </h2>
           
           <Link to={user ? "/home" : "/auth"} className="relative group inline-flex items-center justify-center">
              <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-500 to-cyan-500 blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
-             <div className="relative flex items-center gap-4 px-12 py-6 bg-white text-black font-black uppercase tracking-widest hover:bg-cyan-400 transition-colors duration-300 w-full sm:w-auto justify-center z-10">
+             <div className="relative flex items-center gap-4 px-12 py-6 bg-white text-bg-deep font-black uppercase tracking-widest hover:bg-cyan-400 transition-colors duration-300 w-full sm:w-auto justify-center z-10">
                <span>Sisteme Bağlan</span>
                <ChevronRight size={24} className="group-hover:translate-x-2 transition-transform" />
              </div>
@@ -502,39 +503,39 @@ const Landing: React.FC = () => {
       </section>
 
       {/* Extreme Minimal Footer */}
-      <footer className="bg-[#03000a] border-t border-white/5 pt-20 pb-10 relative z-10">
+      <footer className="bg-bg-deep border-t border-white/5 pt-20 pb-10 relative z-10">
         <div className="max-w-[1400px] mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-12 mb-20">
             <div>
               <div className="flex items-center gap-3 mb-6">
-                <ScanLine size={24} className="text-white" />
-                <span className="text-3xl font-black font-outfit uppercase tracking-tighter text-white">Silius</span>
+                <ScanLine size={24} className="text-text-main" />
+                <span className="text-3xl font-black font-outfit uppercase tracking-tighter text-text-main">Silius</span>
               </div>
-              <p className="text-white/40 text-sm max-w-sm font-light">İstanbul un yeraltı ritmi. Algoritmaları unut, müziğe güven. Sadece davetli olanların bildiği dünyayı keşfet.</p>
+              <p className="text-text-main/40 text-sm max-w-sm font-light">İstanbul un yeraltı ritmi. Algoritmaları unut, müziğe güven. Sadece davetli olanların bildiği dünyayı keşfet.</p>
             </div>
             
             <div className="flex gap-16">
               <div className="space-y-4">
-                <h4 className="text-white/30 font-bold uppercase tracking-widest text-[10px] font-mono">Keşfet</h4>
+                <h4 className="text-text-main/30 font-bold uppercase tracking-widest text-[10px] font-mono">Keşfet</h4>
                 <ul className="space-y-3">
-                  <li><Link to="/vibeler" className="text-white/70 hover:text-cyan-400 hover:tracking-widest transition-all text-sm uppercase">Radar</Link></li>
-                  <li><Link to="/mekanlar" className="text-white/70 hover:text-cyan-400 hover:tracking-widest transition-all text-sm uppercase">Mekanlar</Link></li>
+                  <li><Link to="/vibeler" className="text-text-main/70 hover:text-cyan-400 hover:tracking-widest transition-all text-sm uppercase">Radar</Link></li>
+                  <li><Link to="/mekanlar" className="text-text-main/70 hover:text-cyan-400 hover:tracking-widest transition-all text-sm uppercase">Mekanlar</Link></li>
                 </ul>
               </div>
               <div className="space-y-4">
-                <h4 className="text-white/30 font-bold uppercase tracking-widest text-[10px] font-mono">Sistem</h4>
-                <ul className="space-y-3">                    <li><Link to="/nasil-kullanilir" className="text-white/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Nasıl Kullanılır?</Link></li>                  <li><Link to="/about" className="text-white/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Manifesto</Link></li>
-                  <li><Link to="/guidelines" className="text-white/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Kurallar</Link></li>
+                <h4 className="text-text-main/30 font-bold uppercase tracking-widest text-[10px] font-mono">Sistem</h4>
+                <ul className="space-y-3">                    <li><Link to="/nasil-kullanilir" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Nasıl Kullanılır?</Link></li>                  <li><Link to="/about" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Manifesto</Link></li>
+                  <li><Link to="/cookie-policy" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">�erez Politikas�</Link></li>`n                  <li><Link to="/guidelines" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Kurallar</Link></li>
                 </ul>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/5 text-white/30 text-xs font-mono uppercase tracking-widest">
+          <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/5 text-text-main/30 text-xs font-mono uppercase tracking-widest">
             <p>© 2026 SILIUS CLUB. NO RIGHTS RESERVED.</p>
             <div className="flex gap-6 mt-4 md:mt-0">
-              <a href="#" className="hover:text-white transition-colors">INSTAGRAM</a>
-              <a href="#" className="hover:text-white transition-colors">SOUNDCLOUD</a>
+              <a href="#" className="hover:text-text-main transition-colors">INSTAGRAM</a>
+              <a href="#" className="hover:text-text-main transition-colors">SOUNDCLOUD</a>
             </div>
           </div>
         </div>

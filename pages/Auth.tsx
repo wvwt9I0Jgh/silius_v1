@@ -123,7 +123,7 @@ const Auth: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen w-full relative overflow-hidden flex items-center justify-center bg-[#03000a] transition-opacity duration-700 ${mounted ? 'opacity-100' : 'opacity-0'} selection:bg-fuchsia-500 selection:text-white`}>
+    <div className={`min-h-screen w-full relative overflow-hidden flex items-center justify-center bg-bg-deep transition-opacity duration-700 ${mounted ? 'opacity-100' : 'opacity-0'} selection:bg-fuchsia-500 selection:text-white`}>
 
       {/* Extreme Gritty Noise Overlay & Grid */}
       <div className="fixed inset-0 opacity-[0.05] pointer-events-none mix-blend-screen z-[100]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")' }} />
@@ -168,7 +168,7 @@ const Auth: React.FC = () => {
         </div>
 
         {/* Right Panel - Terminal Form */}
-        <div className="relative flex flex-col justify-center p-6 md:p-16 order-1 md:order-2 bg-[#03000a] border border-white/5 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+        <div className="relative flex flex-col justify-center p-6 md:p-16 order-1 md:order-2 bg-bg-deep border border-white/5 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
 
           <button
             onClick={() => navigate('/')}

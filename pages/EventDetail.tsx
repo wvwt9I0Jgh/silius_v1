@@ -709,7 +709,7 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
                 type="file"
                 ref={galleryInputRef}
                 className="hidden"
-                accept="image/*"
+                accept="image/*, .heic, .heif, image/heic, image/heif"
                 multiple
                 onChange={handleAddGalleryPhotos}
               />
@@ -735,7 +735,7 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
                 type="file"
                 ref={galleryInputRef}
                 className="hidden"
-                accept="image/*"
+                accept="image/*, .heic, .heif, image/heic, image/heif"
                 multiple
                 onChange={handleAddGalleryPhotos}
               />

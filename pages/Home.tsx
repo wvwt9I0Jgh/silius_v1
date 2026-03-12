@@ -685,7 +685,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                           <span className="font-black text-[10px] text-white uppercase tracking-widest">Görsel Yükle</span>
                         </div>
                       )}
-                      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                      <input type="file" ref={fileInputRef} className="hidden" accept="image/*, .heic, .heif, image/heic, image/heif" onChange={handleFileChange} />
                     </div>
                   </div>
 
@@ -730,7 +730,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                         type="file" 
                         ref={galleryInputRef} 
                         className="hidden" 
-                        accept="image/*" 
+                        accept="image/*, .heic, .heif, image/heic, image/heif" 
                         multiple 
                         onChange={handleGalleryFilesChange} 
                       />
