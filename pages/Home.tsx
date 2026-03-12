@@ -643,9 +643,10 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
         {/* Create Modal */}
         {showCreateModal && (
-          <div className="fixed inset-0 z-[100] flex items-start md:items-center justify-center pt-3 pb-24 md:py-4 px-3 md:p-4 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300">
+          <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300">
+            <div className="min-h-full flex items-start md:items-center justify-center px-3 md:p-4 pt-4 pb-28 md:pb-8">
             <div
-              className="relative w-full max-w-2xl bg-slate-900 rounded-[2rem] md:rounded-[3rem] p-5 md:p-12 border border-white/10 shadow-2xl overflow-y-auto scrollbar-hide max-h-[calc(100dvh-88px)] md:max-h-[90vh]"
+              className="relative w-full max-w-2xl bg-slate-900 rounded-[2rem] md:rounded-[3rem] p-5 md:p-12 border border-white/10 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Glows */}
@@ -801,7 +802,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                     />
                   </div>
 
-                  <div className="pt-2 md:pt-4 flex gap-4 sticky bottom-0 bg-slate-900 pb-1">
+                  <div className="pt-2 md:pt-4 flex gap-4">
                     <button type="button" onClick={() => setShowCreateModal(false)} className="px-6 md:px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest text-slate-500 hover:text-white hover:bg-white/5 transition-all">
                       İPTAL
                     </button>
@@ -811,6 +812,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                   </div>
                 </form>
               </div>
+            </div>
             </div>
           </div>
         )}
