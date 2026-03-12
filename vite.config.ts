@@ -24,11 +24,16 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
+        target: 'es2020',
+        cssMinify: true,
+        minify: 'esbuild',
         rollupOptions: {
           output: {
             manualChunks: {
               'vendor-react': ['react', 'react-dom', 'react-router-dom'],
               'vendor-supabase': ['@supabase/supabase-js'],
+              'vendor-icons': ['lucide-react'],
+              'vendor-qr': ['react-qr-code', 'html5-qrcode'],
             }
           }
         }

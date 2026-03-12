@@ -96,8 +96,13 @@ const AdminVibes: React.FC = () => {
             const success = await db.deleteEvent(vibeId);
             if (success) {
                 setVibes(vibes.filter(v => v.id !== vibeId));
+                // Etkinlik cache'ini temizle - ana akışta güncel veri görünsün
+                try {
+                    localStorage.removeItem('silius_events_cache');
+                    localStorage.removeItem('silius_events_expiry');
+                } catch {}
             } else {
-                alert('Vibe silme başarısız! RLS policy kontrol edin.');
+                alert('Vibe silme başarısız! Supabase admin RLS policy eksik olabilir.\n\nmigration-admin-policies.sql dosyasını Supabase SQL Editor\'de çalıştırın.');
             }
         } catch (error) {
             console.error('Delete error:', error);

@@ -182,16 +182,30 @@ export const db = {
 
   deleteEvent: async (eventId: string): Promise<boolean> => {
     const client = getAdminClient();
-    const { error } = await client
-      .from('events')
-      .delete()
-      .eq('id', eventId);
+    
+    try {
+      // Önce ilişkili verileri temizle (foreign key constraint hatası önlenir)
+      await Promise.all([
+        client.from('event_participants').delete().eq('event_id', eventId),
+        client.from('comments').delete().eq('event_id', eventId),
+        client.from('event_gallery').delete().eq('event_id', eventId),
+        client.from('notifications').delete().eq('link', `/events/${eventId}`),
+      ]);
 
-    if (error) {
-      console.error('Event delete error:', error);
+      const { error } = await client
+        .from('events')
+        .delete()
+        .eq('id', eventId);
+
+      if (error) {
+        console.error('Event delete error:', error);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Event delete cascade error:', error);
       return false;
     }
-    return true;
   },
 
   // ==================== EVENT PARTICIPANTS ====================
@@ -806,7 +820,23 @@ export const db = {
 
     // 1. Önce ilişkili verileri temizle
     try {
-      // İlişkili verileri temizle
+      // Kullanıcının sahip olduğu etkinliklerin ID'lerini al
+      const { data: userEvents } = await client
+        .from('events')
+        .select('id')
+        .eq('user_id', userId);
+
+      // Kullanıcının etkinliklerine ait galeri, katılımcı, yorum ve bildirimleri sil
+      if (userEvents && userEvents.length > 0) {
+        const eventIds = userEvents.map(e => e.id);
+        await Promise.all([
+          client.from('event_gallery').delete().in('event_id', eventIds),
+          client.from('event_participants').delete().in('event_id', eventIds),
+          client.from('comments').delete().in('event_id', eventIds),
+        ]);
+      }
+
+      // Kullanıcıya ait doğrudan ilişkili verileri temizle
       await Promise.all([
         client.from('event_participants').delete().eq('user_id', userId),
         client.from('comments').delete().eq('user_id', userId),
@@ -1236,13 +1266,16 @@ export const db = {
       const userIds = [...new Set(events.map(e => e.user_id))];
       // totalTimeSpent, migration-vibe-score.sql çalıştırılmamışsa olmayabilir
       // hata durumunda users null kalır, forEach skip edilir, scorelar 0 olur
-      const { data: users } = await supabase
-        .from('users')
-        .select('id, totalTimeSpent')
-        .in('id', userIds)
-        .throwOnError()
-        .then(res => res)
-        .catch(() => ({ data: null }));
+      let users: { id: string; totalTimeSpent: number }[] | null = null;
+      try {
+        const res = await supabase
+          .from('users')
+          .select('id, totalTimeSpent')
+          .in('id', userIds);
+        users = res.data as any;
+      } catch {
+        users = null;
+      }
 
       // Sayıları hesapla
       const createdCounts: Record<string, number> = {};

@@ -137,8 +137,13 @@ const AdminUsers: React.FC = () => {
             const success = await db.deleteUser(userId);
             if (success) {
                 setUsers(users.filter(u => u.id !== userId));
+                // Cache'leri temizle
+                try {
+                    localStorage.removeItem('silius_events_cache');
+                    localStorage.removeItem('silius_events_expiry');
+                } catch {}
             } else {
-                alert('Kullanıcı silme başarısız! RLS policy kontrol edin.');
+                alert('Kullanıcı silme başarısız!\n\nmigration-admin-policies.sql dosyasını Supabase SQL Editor\'de çalıştırın.');
             }
         } catch (error) {
             console.error('Delete error:', error);

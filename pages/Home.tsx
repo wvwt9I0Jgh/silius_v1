@@ -353,13 +353,13 @@ const Home: React.FC<HomeProps> = ({ user }) => {
   }
 
   return (
-    <div className="min-h-screen w-full relative bg-bg-deep overflow-hidden">
+    <div className="min-h-screen w-full relative bg-bg-deep overflow-hidden max-w-[100vw]">
       {/* Background - Party/Rave Atmosphere */}
-      <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-20%] left-[20%] w-[60%] h-[60%] rounded-full bg-fuchsia-900/20 blur-[120px] animate-pulse"></div>
         <div className="absolute bottom-[-10%] right-[10%] w-[50%] h-[50%] rounded-full bg-cyan-900/10 blur-[100px] animate-pulse delay-1000"></div>
         <div className="absolute top-[30%] right-[30%] w-[30%] h-[30%] rounded-full bg-violet-900/15 blur-[80px] animate-pulse delay-500"></div>
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+        <div className="absolute inset-0 opacity-20 brightness-100 contrast-150 mix-blend-overlay" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")'}}></div>
         {/* Scan line effect */}
         <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(255,255,255,0.01)_2px,rgba(255,255,255,0.01)_4px)]"></div>
       </div>
@@ -486,6 +486,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                     <img
                       src={event.image}
                       alt={event.title}
+                      loading="lazy"
                       className={`w-full h-full object-cover transition-transform duration-700 ${isExpired ? 'grayscale' : 'group-hover:scale-110 group-hover:filter group-hover:contrast-125'}`}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-bg-surface via-transparent to-transparent opacity-80"></div>

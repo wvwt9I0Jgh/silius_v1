@@ -75,13 +75,13 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
   ];
 
   return (
-    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] w-[98%] max-w-5xl">
-      <div className="glass px-2 md:px-6 py-3 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-between gap-1 md:gap-3 border shadow-2xl transition-all">
+    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] w-[96%] max-w-5xl">
+      <div className="glass px-1.5 md:px-6 py-2.5 md:py-3 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-between gap-0.5 md:gap-3 border shadow-2xl transition-all overflow-hidden">
         <div className="hidden md:flex items-center gap-1 pr-4 mr-4 border-r border-slate-500/20">
           <Link to="/home" className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center font-black text-white text-lg shadow-lg shadow-indigo-600/30">S</Link>
         </div>
 
-        <div className="flex items-center gap-1 flex-grow justify-around md:justify-start">
+        <div className="flex items-center gap-0.5 md:gap-1 flex-grow justify-around md:justify-start min-w-0">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -89,25 +89,25 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex flex-col md:flex-row items-center gap-1 md:gap-2 ${isActive
+                className={`px-2 md:px-5 py-1.5 md:py-3 rounded-xl md:rounded-2xl text-[9px] md:text-xs font-black uppercase tracking-wider md:tracking-widest transition-all flex flex-col md:flex-row items-center gap-0.5 md:gap-2 shrink-0 ${isActive
                   ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20'
                   : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-600/5'
                   }`}
               >
-                <Icon size={18} strokeWidth={2.5} />
+                <Icon size={16} className="md:w-[18px] md:h-[18px]" strokeWidth={2.5} />
                 <span className="md:inline">{item.label}</span>
               </Link>
             );
           })}
 
-          {/* Dinamik CMS Sayfaları */}
+          {/* Dinamik CMS Sayfaları - sadece masaüstünde göster */}
           {cmsPages.map((page) => {
             const isActive = location.pathname === `/page/${page.slug}`;
             return (
               <Link
                 key={page.id}
                 to={`/page/${page.slug}`}
-                className={`px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex flex-col md:flex-row items-center gap-1 md:gap-2 ${isActive
+                className={`hidden md:flex px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex-col md:flex-row items-center gap-1 md:gap-2 ${isActive
                   ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-600/20'
                   : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-600/5'
                   }`}
@@ -119,15 +119,15 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
           })}
         </div>
 
-        <div className="flex items-center gap-2 pl-2 md:pl-4 ml-2 md:ml-4 border-l border-slate-500/20">
+        <div className="flex items-center gap-1 md:gap-2 pl-1 md:pl-4 ml-1 md:ml-4 border-l border-slate-500/20 shrink-0">
           {/* Admin Panel Butonu - Sadece Adminlere Görünür */}
           {isAdmin && (
             <Link
               to="/admin"
-              className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center hover:bg-rose-500/10 transition-all text-rose-500"
+              className="w-7 h-7 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center hover:bg-rose-500/10 transition-all text-rose-500"
               title="Admin Panel"
             >
-              <Shield size={18} />
+              <Shield size={15} className="md:w-[18px] md:h-[18px]" />
             </Link>
           )}
 
@@ -135,9 +135,9 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
           <div className="relative">
             <button
               onClick={handleNotificationClick}
-              className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center hover:bg-indigo-600/10 transition-all relative"
+              className="w-7 h-7 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center hover:bg-indigo-600/10 transition-all relative"
             >
-              <Bell size={18} className="text-slate-500" />
+              <Bell size={15} className="text-slate-500 md:w-[18px] md:h-[18px]" />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full text-[9px] font-black text-white flex items-center justify-center">
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -196,14 +196,14 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
             )}
           </div>
 
-          <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-slate-500/10 p-1 flex items-center justify-center overflow-hidden border border-slate-500/10">
-            <img src={user.avatar} alt="me" className="w-full h-full object-cover" />
+          <div className="w-7 h-7 md:w-10 md:h-10 rounded-lg md:rounded-2xl bg-slate-500/10 p-0.5 md:p-1 flex items-center justify-center overflow-hidden border border-slate-500/10">
+            <img src={user.avatar} alt="me" className="w-full h-full object-cover rounded-md md:rounded-xl" />
           </div>
           <button
             onClick={onLogout}
-            className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl md:rounded-2xl transition-all"
+            className="w-7 h-7 md:w-10 md:h-10 flex items-center justify-center text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg md:rounded-2xl transition-all"
           >
-            <LogOut size={20} strokeWidth={2.5} />
+            <LogOut size={16} className="md:w-5 md:h-5" strokeWidth={2.5} />
           </button>
         </div>
       </div>

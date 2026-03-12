@@ -29,7 +29,19 @@ body {
     background-color: var(--bg-deep);
     color: var(--text-main);
     overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
     transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s ease;
+}
+
+html {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
+#root {
+    overflow-x: hidden;
+    max-width: 100vw;
 }
 
 .font-outfit {

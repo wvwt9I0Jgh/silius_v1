@@ -4,11 +4,13 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { db } from './database';
-import Landing from './pages/Landing';
-import Auth from './pages/Auth';
 import Navbar from './components/Navbar';
 import BanScreen from './components/BanScreen';
 import { Moon, Sun, Loader2 } from 'lucide-react';
+
+// Landing ve Auth da lazy yükle - ilk açılışta daha küçük bundle
+const Landing = lazy(() => import('./pages/Landing'));
+const Auth = lazy(() => import('./pages/Auth'));
 
 // Lazy-loaded pages — her sayfa ayrı chunk olarak yüklenir
 const Home = lazy(() => import('./pages/Home'));
@@ -196,7 +198,7 @@ const AppContent: React.FC = () => {
         {/* Global Theme Toggle Button */}
         <button
           onClick={toggleTheme}
-          className="fixed top-6 right-6 md:top-8 md:right-12 z-[200] w-12 h-12 md:w-14 md:h-14 flex items-center justify-center glass rounded-2xl shadow-xl transition-all hover:scale-110 active:scale-90 group"
+          className="fixed top-4 right-4 md:top-8 md:right-12 z-[200] w-10 h-10 md:w-14 md:h-14 flex items-center justify-center glass rounded-2xl shadow-xl transition-all hover:scale-110 active:scale-90 group"
         >
           {isDarkMode ? (
             <Sun size={20} className="text-amber-400 group-hover:rotate-45 transition-transform" />
