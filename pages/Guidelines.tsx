@@ -60,7 +60,7 @@ const Guidelines: React.FC = () => {
             }
           ].map((rule, i) => (
             <div key={i} className="glass-card p-8 md:p-10 rounded-[2.5rem] border-2 border-indigo-500/10 flex flex-col md:flex-row gap-8 items-start hover:rose-frame transition-all bg-white/5">
-              <div className={p-5 bg-black/20 rounded-2xl } style={{ color: rule.color.replace('text-', '') }}>
+              <div className={`p-5 bg-black/20 rounded-2xl ${rule.color}`} style={{ color: rule.color.replace('text-', '') }}>
                 <rule.icon size={36} className={rule.color} />
               </div>
               <div>
