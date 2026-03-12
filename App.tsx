@@ -36,6 +36,7 @@ const CMSPageView = lazy(() => import('./pages/CMSPageView'));
 const ProfileSetup = lazy(() => import('./pages/ProfileSetup'));
 const CheckInPage = lazy(() => import('./pages/CheckInPage'));
 const MyQR = lazy(() => import('./pages/MyQR'));
+const CookiePolicy = lazy(() => import('./pages/Cookie'));
 
 // Minimal fallback spinner — Suspense boundary için
 const PageLoader = () => (
@@ -215,7 +216,8 @@ const AppContent: React.FC = () => {
           <Route path="/auth" element={user ? <Navigate to="/home" /> : <Auth />} />
           <Route path="/about" element={<About />} />
           <Route path="/security" element={<Security />} />
-          <Route path="/guidelines" element={<Guidelines />} />`n          <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/guidelines" element={<Guidelines />} />
+          <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/nasil-kullanilir" element={<HowToUse />} />
           <Route path="/vibeler" element={<Vibeler />} />
