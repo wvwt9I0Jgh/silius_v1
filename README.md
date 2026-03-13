@@ -2,6 +2,7 @@
 
 > **v1.0.0 — Community Edition**  
 > Gençleri fiziksel etkinlikler etrafında buluşturan, mobil öncelikli sosyal topluluk platformu.
+> https://silius-v1.vercel.app/#/
 
 ---
 
