@@ -75,8 +75,8 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
   ];
 
   return (
-    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] w-[96%] max-w-5xl">
-      <div className="glass px-1.5 md:px-6 py-2.5 md:py-3 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-between gap-0.5 md:gap-3 border shadow-2xl transition-all overflow-hidden">
+    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[140] w-[96%] max-w-5xl">
+      <div className="glass px-1.5 md:px-6 py-2.5 md:py-3 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-between gap-0.5 md:gap-3 border shadow-2xl transition-all overflow-visible">
         <div className="hidden md:flex items-center gap-1 pr-4 mr-4 border-r border-slate-500/20">
           <Link to="/home" className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center font-black text-white text-lg shadow-lg shadow-indigo-600/30">S</Link>
         </div>
@@ -147,7 +147,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
 
             {/* Bildirim Paneli */}
             {showNotifications && (
-              <div className="absolute bottom-full right-0 mb-2 w-72 md:w-80 glass rounded-2xl p-4 shadow-2xl max-h-96 overflow-y-auto">
+              <div className="absolute bottom-full right-0 mb-2 w-72 md:w-80 glass rounded-2xl p-4 shadow-2xl max-h-96 overflow-y-auto z-[160] border border-indigo-500/20">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-black uppercase text-xs">Bildirimler</h3>
                   {unreadCount > 0 && (

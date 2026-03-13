@@ -926,42 +926,46 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
                 <div className="flex items-center gap-3 text-xs font-bold opacity-60">
                   <UsersIcon size={14} className="text-rose-500" /> {participantCount} Katılımcı
                 </div>
+                <div className="flex items-center gap-3 text-xs font-bold opacity-60">
+                  <Radio size={14} className="text-green-500" /> {checkedInCount} Kişi Canlıda
+                </div>
               </div>
             </div>
 
-            {isOwner && (
-              <div className="mt-8 pt-8 border-t border-rose-500/10">
-                <button
-                  onClick={() => setShowParticipants(!showParticipants)}
-                  className="w-full flex items-center justify-between text-xs font-black uppercase tracking-wider opacity-60 hover:opacity-100 transition-opacity"
-                >
-                  <span>Katılımcılar</span>
+            <div className="mt-8 pt-8 border-t border-rose-500/10">
+              <button
+                onClick={() => setShowParticipants(!showParticipants)}
+                className="w-full flex items-center justify-between text-xs font-black uppercase tracking-wider opacity-60 hover:opacity-100 transition-opacity"
+              >
+                <span>Katılımcılar</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-rose-500 font-black">{participantCount}</span>
                   <UsersIcon size={14} className="text-rose-500" />
-                </button>
+                </div>
+              </button>
 
-                {showParticipants && (
-                  <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
-                    {participants.length === 0 ? (
-                      <p className="text-xs opacity-40 text-center py-4">Henüz katılımcı yok</p>
-                    ) : (
-                      participants.map(participant => (
-                        <div key={participant.id} className="flex items-center gap-3 p-3 glass rounded-2xl hover:bg-rose-500/5 transition-all">
-                          <img
-                            src={participant.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${participant.id}`}
-                            alt={participant.username}
-                            className="w-8 h-8 rounded-xl object-cover"
-                          />
-                          <div className="flex-grow min-w-0">
-                            <p className="text-xs font-bold truncate">{participant.firstName} {participant.lastName}</p>
-                            <p className="text-[10px] opacity-40 truncate">@{participant.username}</p>
-                          </div>
+              {showParticipants && (
+                <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
+                  {participants.length === 0 ? (
+                    <p className="text-xs opacity-40 text-center py-4">Henüz katılımcı yok</p>
+                  ) : (
+                    participants.map(participant => (
+                      <div key={participant.id} className="flex items-center gap-3 p-3 glass rounded-2xl hover:bg-rose-500/5 transition-all">
+                        <img
+                          src={participant.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${participant.id}`}
+                          alt={participant.username}
+                          className="w-8 h-8 rounded-xl object-cover"
+                        />
+                        <div className="flex-grow min-w-0">
+                          <p className="text-xs font-bold truncate">{participant.firstName} {participant.lastName}</p>
+                          <p className="text-[10px] opacity-40 truncate">@{participant.username}</p>
                         </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* CANLI Kutucuğu - Her zaman göster */}
             <div className="mt-8 pt-8 border-t border-green-500/10">

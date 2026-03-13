@@ -241,7 +241,7 @@ const Auth: React.FC = () => {
                     </div>
                   </div>
                   <span className="text-[10px] text-white/40 group-hover:text-white/70 transition-colors leading-relaxed font-mono uppercase tracking-widest">
-                    <span className="text-cyan-400 font-bold border-b border-cyan-400/30">Kuralları</span> okudum, yeraltı sistemine onayım var. Kuralların dışına çıkarsam sistemden banlanacağımı kabul ediyorum.
+                    <span className="text-cyan-400 font-bold border-b border-cyan-400/30">Kuralları</span> okudum, yeraltı sistemine onayım var. Kuralların dışına çıkarsam sistemden banlanacağımı kabul ediyorum ve burdaki tüm yaptığım şeyler benim şahsım adına aittir.
                   </span>
                 </label>
               )}
