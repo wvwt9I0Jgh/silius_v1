@@ -43,6 +43,7 @@ const PROFILE_CACHE_KEY = 'silius_profile_cache';
 const CACHE_EXPIRY_KEY = 'silius_cache_expiry';
 const CACHE_DURATION = 10 * 60 * 1000; // 10 dakika - Daha uzun cache = Daha hızlı yükleme
 const MAX_LOADING_TIME = 1500; // 1.5 saniye maksimum yükleme süresi - daha hızlı!
+const OAUTH_REDIRECT_HOME_URL = 'https://silius-v1.vercel.app/#/home';
 
 // LocalStorage'dan profil cache'i oku
 const getProfileFromCache = (userId: string): UserProfile | null => {
@@ -107,7 +108,7 @@ const detectOAuthError = (): string | null => {
       // Supabase detectSessionInUrl zaten token'ı işleyecek
       // Sadece URL'yi temizle
       setTimeout(() => {
-        window.history.replaceState({}, '', window.location.origin + window.location.pathname + '#/home');
+        window.history.replaceState({}, '', OAUTH_REDIRECT_HOME_URL);
       }, 100);
     }
   } catch {
@@ -491,7 +492,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'https://silius-v1.pages.dev'
+          redirectTo: OAUTH_REDIRECT_HOME_URL
         }
       });
 

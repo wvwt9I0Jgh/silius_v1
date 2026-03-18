@@ -2,11 +2,11 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
-import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { db } from './database';
 import Navbar from './components/Navbar';
 import BanScreen from './components/BanScreen';
-import { Moon, Sun, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 // Landing ve Auth da lazy yükle - ilk açılışta daha küçük bundle
 const Landing = lazy(() => import('./pages/Landing'));
@@ -26,11 +26,14 @@ const HowToUse = lazy(() => import('./pages/HowToUse'));
 const Vibeler = lazy(() => import('./pages/Vibeler'));
 const Topluluk = lazy(() => import('./pages/Topluluk'));
 const Mekanlar = lazy(() => import('./pages/Mekanlar'));
+const Info = lazy(() => import('./pages/Info'));
+const Galerimiz = lazy(() => import('./pages/Galerimiz'));
 const Admin = lazy(() => import('./pages/Admin'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminVibes = lazy(() => import('./pages/admin/AdminVibes'));
 const AdminPages = lazy(() => import('./pages/admin/AdminPages'));
 const AdminBans = lazy(() => import('./pages/admin/AdminBans'));
+const AdminGallery = lazy(() => import('./pages/admin/AdminGallery'));
 const PageEditor = lazy(() => import('./pages/admin/PageEditor'));
 const CMSPageView = lazy(() => import('./pages/CMSPageView'));
 const ProfileSetup = lazy(() => import('./pages/ProfileSetup'));
@@ -105,7 +108,6 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const AppContent: React.FC = () => {
   const { user, profile, loading, signOut, isBanned, banInfo } = useAuth();
-  const { isDarkMode, toggleTheme } = useTheme();
   const [forceShow, setForceShow] = useState(false);
   const timeTrackingRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -196,18 +198,6 @@ const AppContent: React.FC = () => {
     <Router>
       <div className="min-h-screen transition-colors duration-500 bg-bg-deep text-text-main">
 
-        {/* Global Theme Toggle Button */}
-        <button
-          onClick={toggleTheme}
-          className="fixed top-4 right-4 md:top-8 md:right-12 z-[200] w-10 h-10 md:w-14 md:h-14 flex items-center justify-center glass rounded-2xl shadow-xl transition-all hover:scale-110 active:scale-90 group"
-        >
-          {isDarkMode ? (
-            <Sun size={20} className="text-amber-400 group-hover:rotate-45 transition-transform" />
-          ) : (
-            <Moon size={20} className="text-indigo-600 group-hover:-rotate-12 transition-transform" />
-          )}
-        </button>
-
         {currentUser && <Navbar user={currentUser} onLogout={handleLogout} />}
 
         <Suspense fallback={<PageLoader />}>
@@ -223,6 +213,8 @@ const AppContent: React.FC = () => {
           <Route path="/vibeler" element={<Vibeler />} />
           <Route path="/topluluk" element={<Topluluk />} />
           <Route path="/mekanlar" element={<Mekanlar />} />
+          <Route path="/info" element={<Info />} />
+          <Route path="/galerimiz" element={<Galerimiz />} />
 
           {/* QR Check-in Route */}
           <Route path="/checkin/:eventId" element={<CheckInPage />} />
@@ -341,6 +333,14 @@ const AppContent: React.FC = () => {
             element={
               <AdminRoute>
                 <AdminBans />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/gallery"
+            element={
+              <AdminRoute>
+                <AdminGallery />
               </AdminRoute>
             }
           />

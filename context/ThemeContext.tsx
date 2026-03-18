@@ -11,29 +11,16 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [theme, setTheme] = useState<Theme>('dark');
-
-    useEffect(() => {
-        // Check local storage or system preference
-        const savedTheme = localStorage.getItem('silius_theme') as Theme | null;
-        if (savedTheme) {
-            setTheme(savedTheme);
-        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            setTheme('dark');
-        } else {
-            setTheme('light'); // Default to light if no preference and not dark system
-        }
-    }, []);
+    const [theme] = useState<Theme>('dark');
 
     useEffect(() => {
         const root = window.document.documentElement;
         root.classList.remove('light', 'dark');
-        root.classList.add(theme);
-        localStorage.setItem('silius_theme', theme);
+        root.classList.add('dark');
     }, [theme]);
 
     const toggleTheme = () => {
-        setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+        // Light mode is intentionally disabled.
     };
 
     return (

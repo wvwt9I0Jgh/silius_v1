@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Sparkles, ArrowRight, Zap, Shield, MapPin, Globe, Sun, Moon, X, ChevronRight, Plus, ScanLine, Ticket, Volume2, Fingerprint, Users
+  Sparkles, ArrowRight, Zap, Shield, MapPin, Globe, X, ChevronRight, Plus, ScanLine, Ticket, Volume2, Fingerprint, Users, Menu
 } from 'lucide-react';
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [scrollY, setScrollY] = useState(0);
-  const { isDarkMode, toggleTheme } = useTheme();
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // Admin logic
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -158,6 +157,7 @@ const Landing: React.FC = () => {
               { name: 'Radar', path: '/vibeler' },
               { name: 'Topluluk', path: '/topluluk' },
               { name: 'Mekanlar', path: '/mekanlar' },
+              { name: 'Galerimiz', path: '/galerimiz' },
             ].map(link => (
               <Link key={link.name} to={link.path} className="text-[11px] font-bold tracking-[0.2em] text-text-main/50 hover:text-text-main uppercase transition-colors">
                 {link.name}
@@ -166,8 +166,12 @@ const Landing: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <button onClick={toggleTheme} className="hidden md:flex p-3 rounded-full hover:bg-text-main/10 text-text-main/50 hover:text-text-main transition-colors">
-              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            <button
+              onClick={() => setShowMobileMenu(true)}
+              className="md:hidden w-11 h-11 rounded-full border border-fuchsia-500/40 bg-bg-surface/70 backdrop-blur-md flex items-center justify-center text-fuchsia-400"
+              aria-label="Menüyü aç"
+            >
+              <Menu size={18} />
             </button>
             <Link to={user ? "/home" : "/auth"} className="relative group px-6 py-3 overflow-hidden rounded-full border border-fuchsia-500/50 bg-fuchsia-500/10 text-fuchsia-400 text-[11px] font-bold uppercase tracking-[0.2em] hover:text-text-main transition-colors flex items-center gap-2">
               <span className="absolute inset-0 bg-fuchsia-500 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
@@ -176,6 +180,56 @@ const Landing: React.FC = () => {
           </div>
         </div>
       </nav>
+
+      {showMobileMenu && (
+        <div className="fixed inset-0 z-[120] md:hidden">
+          <button
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            onClick={() => setShowMobileMenu(false)}
+            aria-label="Menüyü kapat"
+          />
+          <aside className="absolute top-0 left-0 h-full w-[82%] max-w-sm bg-[#070311] border-r border-fuchsia-500/25 p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-8">
+              <span className="text-lg font-black uppercase tracking-[0.25em] text-fuchsia-400">Menü</span>
+              <button
+                onClick={() => setShowMobileMenu(false)}
+                className="w-10 h-10 rounded-full border border-white/15 text-text-main/70 flex items-center justify-center"
+                aria-label="Kapat"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {[
+                { name: 'Nasıl Kullanılır?', path: '/nasil-kullanilir' },
+                { name: 'Radar', path: '/vibeler' },
+                { name: 'Topluluk', path: '/topluluk' },
+                { name: 'Mekanlar', path: '/mekanlar' },
+                { name: 'Info', path: '/info' },
+                { name: 'Galerimiz', path: '/galerimiz' },
+              ].map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setShowMobileMenu(false)}
+                  className="block rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-sm font-bold uppercase tracking-[0.2em] text-text-main/80"
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </div>
+
+            <Link
+              to={user ? '/home' : '/auth'}
+              onClick={() => setShowMobileMenu(false)}
+              className="mt-auto rounded-2xl bg-fuchsia-500 text-white text-center py-4 font-black uppercase tracking-[0.22em]"
+            >
+              {user ? 'Radara Dön' : 'Kayıt / Giriş'}
+            </Link>
+          </aside>
+        </div>
+      )}
 
       {/* Cyber-Rave Hero */}
       <header className="relative min-h-screen flex items-center justify-center pt-24 pb-20 overflow-hidden bg-bg-deep">
@@ -200,14 +254,12 @@ const Landing: React.FC = () => {
               </p>
               
               <div className="flex flex-wrap gap-4 pt-4 w-full sm:w-auto">
-                <Link to={user ? "/home" : "/auth"} className="relative group overflow-hidden bg-white text-bg-deep px-8 py-5 flex items-center justify-center gap-4 font-black tracking-widest uppercase transition-all hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_50px_rgba(255,255,255,0.5)] flex-1 sm:flex-none">
-                   <div className="absolute inset-0 bg-fuchsia-400 -translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+<Link to={user ? "/home" : "/auth"} className="relative group overflow-hidden rounded-2xl bg-fuchsia-600 text-white px-8 py-5 flex items-center justify-center gap-4 font-black tracking-widest uppercase transition-all hover:scale-105 shadow-[0_0_30px_rgba(217,70,239,0.4)] hover:shadow-[0_0_50px_rgba(217,70,239,0.8)] flex-1 sm:flex-none">
+                     <div className="absolute inset-0 bg-fuchsia-400 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                    <Ticket size={24} className="relative z-10 group-hover:-rotate-12 transition-transform" />
                    <span className="relative z-10">Listeye Gir</span>
                 </Link>
-                <a href="#discover" className="px-8 py-5 border border-white/20 hover:border-white/50 text-text-main font-bold tracking-widest uppercase transition-all backdrop-blur-sm bg-text-main/5 flex items-center justify-center gap-3 flex-1 sm:flex-none">
-                  <Volume2 size={24} /> Ses Aç
-                </a>
+
               </div>
            </div>
            
@@ -492,8 +544,8 @@ const Landing: React.FC = () => {
           </h2>
           
           <Link to={user ? "/home" : "/auth"} className="relative group inline-flex items-center justify-center">
-             <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-500 to-cyan-500 blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
-             <div className="relative flex items-center gap-4 px-12 py-6 bg-white text-bg-deep font-black uppercase tracking-widest hover:bg-cyan-400 transition-colors duration-300 w-full sm:w-auto justify-center z-10">
+               <div className="absolute inset-0 bg-fuchsia-500 blur-xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
+               <div className="relative flex items-center gap-4 px-12 py-6 rounded-2xl bg-fuchsia-600 text-white font-black uppercase tracking-widest hover:bg-fuchsia-500 transition-colors duration-300 w-full sm:w-auto justify-center z-10 hover:shadow-[0_0_40px_rgba(217,70,239,0.8)] shadow-[0_0_20px_rgba(217,70,239,0.4)]">
                <span>Sisteme Bağlan</span>
                <ChevronRight size={24} className="group-hover:translate-x-2 transition-transform" />
              </div>
@@ -523,8 +575,13 @@ const Landing: React.FC = () => {
               </div>
               <div className="space-y-4">
                 <h4 className="text-text-main/30 font-bold uppercase tracking-widest text-[10px] font-mono">Sistem</h4>
-                <ul className="space-y-3">                    <li><Link to="/nasil-kullanilir" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Nasıl Kullanılır?</Link></li>                  <li><Link to="/about" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Manifesto</Link></li>
-                  <li><Link to="/cookie-policy" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Çerez Politikası</Link></li>`n                  <li><Link to="/guidelines" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Kurallar</Link></li>
+                <ul className="space-y-3">
+                  <li><Link to="/nasil-kullanilir" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Nasıl Kullanılır?</Link></li>
+                  <li><Link to="/about" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Manifesto</Link></li>
+                  <li><Link to="/info" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Info</Link></li>
+                  <li><Link to="/galerimiz" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Galerimiz</Link></li>
+                  <li><Link to="/cookie-policy" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Çerez Politikası</Link></li>
+                  <li><Link to="/guidelines" className="text-text-main/70 hover:text-fuchsia-400 hover:tracking-widest transition-all text-sm uppercase">Kurallar</Link></li>
                 </ul>
               </div>
             </div>

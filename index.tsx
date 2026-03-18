@@ -6,6 +6,8 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { supabase } from './lib/supabase';
 
+const OAUTH_REDIRECT_HOME_URL = 'https://silius-v1.vercel.app/#/home';
+
 // 🔑 OAuth Callback Handler — HashRouter ile uyumlu
 // Supabase OAuth redirect sonrası URL'deki token/hata parametrelerini işle
 // HashRouter "#" kullandığı için Supabase'in hash fragment'ları ile çakışma olur
@@ -38,7 +40,7 @@ import { supabase } from './lib/supabase';
       } else if (data.session) {
         console.log('✅ OAuth session established:', data.session.user.email);
         // Token'ları URL'den temizle ve home'a yönlendir
-        window.history.replaceState({}, '', window.location.origin + '/#/home');
+        window.history.replaceState({}, '', OAUTH_REDIRECT_HOME_URL);
       } else {
         // Session alınamadıysa auth sayfasına gönder
         window.history.replaceState({}, '', window.location.origin + '/#/auth');

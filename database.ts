@@ -1,6 +1,6 @@
 
 import { supabase, supabaseAdmin, hasAdminClient } from './lib/supabase';
-import { User, Event, Comment, EventParticipant, Friend, EventGalleryPhoto } from './types';
+import { User, Event, Comment, EventParticipant, Friend, EventGalleryPhoto, SiteGalleryImage } from './types';
 
 // Helper: Get the appropriate client for admin operations
 // Uses supabaseAdmin (service role) which bypasses RLS for all admin operations
@@ -1520,6 +1520,61 @@ export const db = {
       return 0;
     }
     return count || 0;
+  },
+
+  // ==================== SITE GALLERY ====================
+
+  getSiteGalleryImages: async (): Promise<SiteGalleryImage[]> => {
+    const { data, error } = await supabase
+      .from('site_gallery')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Site gallery fetch error:', error);
+      return [];
+    }
+
+    return data || [];
+  },
+
+  addSiteGalleryImage: async (imageUrl: string, caption?: string): Promise<SiteGalleryImage | null> => {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      console.error('Unauthorized: User not logged in');
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('site_gallery')
+      .insert({
+        image_url: imageUrl,
+        caption: caption || '',
+        created_by: userData.user.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Site gallery add error:', error);
+      return null;
+    }
+
+    return data;
+  },
+
+  deleteSiteGalleryImage: async (imageId: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('site_gallery')
+      .delete()
+      .eq('id', imageId);
+
+    if (error) {
+      console.error('Site gallery delete error:', error);
+      return false;
+    }
+
+    return true;
   }
 };
 

@@ -5,7 +5,7 @@ import { db } from '../database';
 import {
     Users, FileText, Settings, Shield, Ban, Globe,
     LayoutDashboard, ArrowLeft, Zap, ChevronRight,
-    UserCog, AlertTriangle, PenTool, LogOut, Loader2
+    UserCog, AlertTriangle, PenTool, LogOut, Loader2, Images
 } from 'lucide-react';
 
 const Admin: React.FC = () => {
@@ -192,6 +192,21 @@ const Admin: React.FC = () => {
                         </div>
                         <h3 className="text-xl font-black uppercase tracking-tight mb-2">Ban Yönetimi</h3>
                         <p className="text-sm opacity-60 mb-4">Banlı kullanıcıları ve IP adreslerini yönet</p>
+                        <div className="flex items-center text-rose-500 text-xs font-black uppercase tracking-wider">
+                            Yönet <ChevronRight size={14} className="ml-1" />
+                        </div>
+                    </button>
+
+                    {/* Galeri Yönetimi */}
+                    <button
+                        onClick={() => navigate('/admin/gallery')}
+                        className="glass-card p-8 rounded-3xl text-left hover:border-rose-500/30 transition-all group"
+                    >
+                        <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            <Images className="text-indigo-400" size={28} />
+                        </div>
+                        <h3 className="text-xl font-black uppercase tracking-tight mb-2">Galeri Yönetimi</h3>
+                        <p className="text-sm opacity-60 mb-4">Galerimiz sayfasina gorsel ekle veya kaldir</p>
                         <div className="flex items-center text-rose-500 text-xs font-black uppercase tracking-wider">
                             Yönet <ChevronRight size={14} className="ml-1" />
                         </div>

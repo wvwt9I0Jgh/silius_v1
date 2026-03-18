@@ -76,6 +76,14 @@ export interface EventGalleryPhoto {
   created_at?: string;
 }
 
+export interface SiteGalleryImage {
+  id: string;
+  image_url: string;
+  caption?: string;
+  created_by?: string;
+  created_at?: string;
+}
+
 // Supabase Database Types
 export interface Database {
   public: {
