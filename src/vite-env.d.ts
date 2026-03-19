@@ -6,6 +6,7 @@ interface ImportMetaEnv {
     readonly VITE_SUPABASE_SERVICE_ROLE_KEY?: string
     readonly VITE_GOOGLE_CLIENT_ID?: string
     readonly VITE_GOOGLE_OAUTH_CALLBACK_PATH?: string
+    readonly VITE_GOOGLE_OAUTH_REDIRECT_TO?: string
     readonly VITE_GOOGLE_MAPS_API_KEY?: string
 }
 

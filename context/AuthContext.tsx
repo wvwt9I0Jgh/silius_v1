@@ -43,11 +43,13 @@ const PROFILE_CACHE_KEY = 'silius_profile_cache';
 const CACHE_EXPIRY_KEY = 'silius_cache_expiry';
 const CACHE_DURATION = 10 * 60 * 1000; // 10 dakika - Daha uzun cache = Daha hızlı yükleme
 const MAX_LOADING_TIME = 1500; // 1.5 saniye maksimum yükleme süresi - daha hızlı!
-const OAUTH_CALLBACK_PATH = import.meta.env.VITE_GOOGLE_OAUTH_CALLBACK_PATH || '/auth/google/callback';
-const normalizedOAuthCallbackPath = OAUTH_CALLBACK_PATH.startsWith('http')
-  ? OAUTH_CALLBACK_PATH
-  : `${window.location.origin}${OAUTH_CALLBACK_PATH.startsWith('/') ? OAUTH_CALLBACK_PATH : `/${OAUTH_CALLBACK_PATH}`}`;
-const OAUTH_CALLBACK_URL = normalizedOAuthCallbackPath;
+const OAUTH_REDIRECT_TARGET =
+  import.meta.env.VITE_GOOGLE_OAUTH_REDIRECT_TO ||
+  import.meta.env.VITE_GOOGLE_OAUTH_CALLBACK_PATH ||
+  window.location.origin;
+const OAUTH_CALLBACK_URL = OAUTH_REDIRECT_TARGET.startsWith('http')
+  ? OAUTH_REDIRECT_TARGET
+  : `${window.location.origin}${OAUTH_REDIRECT_TARGET.startsWith('/') ? OAUTH_REDIRECT_TARGET : `/${OAUTH_REDIRECT_TARGET}`}`;
 const OAUTH_REDIRECT_HOME_URL = `${window.location.origin}/#/home`;
 
 // LocalStorage'dan profil cache'i oku
