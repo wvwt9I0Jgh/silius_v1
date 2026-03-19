@@ -73,6 +73,29 @@ interface FetchPlacePhotosParams {
   maxPhotos?: number;
 }
 
+const buildPhotoSearchQueries = (query: string): string[] => {
+  const normalized = normalizeQuery(query);
+  if (!normalized) return [];
+
+  const parts = normalized
+    .split('-')
+    .map((part) => normalizeQuery(part))
+    .filter(Boolean);
+
+  const placeName = parts[0] || normalized;
+  const addressPart = parts.slice(1).join(' ');
+
+  const querySet = new Set<string>([
+    normalized,
+    placeName,
+    `${placeName} ${addressPart}`.trim(),
+    `${placeName} mugla`.trim(),
+    `${placeName} muğla`.trim(),
+  ]);
+
+  return Array.from(querySet).filter(Boolean);
+};
+
 const getPhotoUrlsFromPlace = (place: google.maps.places.PlaceResult | null | undefined): string[] => {
   if (!place?.photos?.length) return [];
 
@@ -97,63 +120,93 @@ export const fetchLocationPhotoUrls = async ({
   const container = document.createElement('div');
   const service = new window.google.maps.places.PlacesService(container);
 
-  const request: google.maps.places.TextSearchRequest = {
-    query: normalizedQuery,
-    language: 'tr',
-  };
-
-  if (typeof latitude === 'number' && typeof longitude === 'number') {
-    request.location = new window.google.maps.LatLng(latitude, longitude);
-    request.radius = 400;
-  }
-
-  const searchResults = await new Promise<google.maps.places.PlaceResult[]>((resolve) => {
-    service.textSearch(request, (results, status) => {
-      if (status === window.google.maps.places.PlacesServiceStatus.OK && results?.length) {
-        resolve(results);
-        return;
-      }
-      resolve([]);
-    });
-  });
-
-  if (!searchResults.length) return [];
-
   const uniqueUrls = new Set<string>();
+  const handledPlaceIds = new Set<string>();
 
-  for (const place of searchResults) {
+  const addPhotosFromPlace = async (place: google.maps.places.PlaceResult) => {
     const placePhotos = getPhotoUrlsFromPlace(place);
     for (const url of placePhotos) {
       uniqueUrls.add(url);
-      if (uniqueUrls.size >= maxPhotos) {
-        return Array.from(uniqueUrls);
-      }
+      if (uniqueUrls.size >= maxPhotos) return;
     }
 
-    if (place.place_id && uniqueUrls.size < maxPhotos) {
-      const details = await new Promise<google.maps.places.PlaceResult | null>((resolve) => {
-        service.getDetails(
-          {
-            placeId: place.place_id,
-            fields: ['photos', 'name'],
-          },
-          (result, status) => {
-            if (status === window.google.maps.places.PlacesServiceStatus.OK && result) {
-              resolve(result);
-              return;
-            }
-            resolve(null);
-          }
-        );
-      });
+    if (!place.place_id || handledPlaceIds.has(place.place_id) || uniqueUrls.size >= maxPhotos) return;
+    handledPlaceIds.add(place.place_id);
 
-      const detailPhotos = getPhotoUrlsFromPlace(details);
-      for (const url of detailPhotos) {
-        uniqueUrls.add(url);
-        if (uniqueUrls.size >= maxPhotos) {
-          return Array.from(uniqueUrls);
+    const details = await new Promise<google.maps.places.PlaceResult | null>((resolve) => {
+      service.getDetails(
+        {
+          placeId: place.place_id,
+          fields: ['photos', 'name'],
+        },
+        (result, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && result) {
+            resolve(result);
+            return;
+          }
+          resolve(null);
         }
-      }
+      );
+    });
+
+    const detailPhotos = getPhotoUrlsFromPlace(details);
+    for (const url of detailPhotos) {
+      uniqueUrls.add(url);
+      if (uniqueUrls.size >= maxPhotos) return;
+    }
+  };
+
+  if (typeof latitude === 'number' && typeof longitude === 'number') {
+    const nearbyResults = await new Promise<google.maps.places.PlaceResult[]>((resolve) => {
+      service.nearbySearch(
+        {
+          location: new window.google.maps.LatLng(latitude, longitude),
+          rankBy: window.google.maps.places.RankBy.DISTANCE,
+          keyword: normalizedQuery,
+          language: 'tr',
+        },
+        (results, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && results?.length) {
+            resolve(results);
+            return;
+          }
+          resolve([]);
+        }
+      );
+    });
+
+    for (const place of nearbyResults) {
+      await addPhotosFromPlace(place);
+      if (uniqueUrls.size >= maxPhotos) return Array.from(uniqueUrls);
+    }
+  }
+
+  const queryCandidates = buildPhotoSearchQueries(normalizedQuery);
+
+  for (const queryCandidate of queryCandidates) {
+    const request: google.maps.places.TextSearchRequest = {
+      query: queryCandidate,
+      language: 'tr',
+    };
+
+    if (typeof latitude === 'number' && typeof longitude === 'number') {
+      request.location = new window.google.maps.LatLng(latitude, longitude);
+      request.radius = 600;
+    }
+
+    const searchResults = await new Promise<google.maps.places.PlaceResult[]>((resolve) => {
+      service.textSearch(request, (results, status) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && results?.length) {
+          resolve(results);
+          return;
+        }
+        resolve([]);
+      });
+    });
+
+    for (const place of searchResults) {
+      await addPhotosFromPlace(place);
+      if (uniqueUrls.size >= maxPhotos) return Array.from(uniqueUrls);
     }
   }
 

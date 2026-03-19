@@ -22,9 +22,12 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
+  const [mapInitFailed, setMapInitFailed] = useState(false);
+  const embeddedMapUrl = `https://www.google.com/maps?q=${latitude},${longitude}&z=16&output=embed`;
 
   useEffect(() => {
     if (!isValidApiKey) {
+      setMapInitFailed(true);
       return;
     }
 
@@ -99,6 +102,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     });
     } catch (e) {
       console.warn('Google Maps yüklenemedi:', e);
+      setMapInitFailed(true);
     }
   }, [isGoogleLoaded, latitude, longitude]);
 
@@ -110,33 +114,45 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     window.open(`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`, '_blank');
   };
 
-  // API key yoksa veya geçersizse statik görüntü göster
-  if (!isValidApiKey) {
+  // API key yoksa veya JS harita yüklenemezse iframe tabanlı canlı harita göster
+  if (!isValidApiKey || mapInitFailed) {
     return (
       <div className="rounded-2xl overflow-hidden border border-white/10 bg-slate-800/50">
-        <div 
-          className="w-full flex items-center justify-center bg-slate-800/50"
-          style={{ height }}
-        >
-          <div className="text-center p-6">
-            <MapPin className="w-12 h-12 text-rose-500 mx-auto mb-3" />
-            <p className="text-sm font-bold text-white mb-1">{locationName}</p>
-            <p className="text-[10px] text-slate-500 mb-4">
-              {latitude.toFixed(6)}, {longitude.toFixed(6)}
-            </p>
-            <div className="flex gap-2 justify-center">
+        <div className="w-full" style={{ height }}>
+          <iframe
+            title={`${locationName} map`}
+            src={embeddedMapUrl}
+            className="w-full h-full border-0"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </div>
+        <div className="bg-slate-900/80 backdrop-blur p-4 border-t border-white/5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-10 h-10 bg-rose-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                <MapPin className="text-rose-500" size={18} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-white truncate">{locationName}</p>
+                <p className="text-[10px] text-slate-500">
+                  {latitude.toFixed(6)}, {longitude.toFixed(6)}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
               <button
                 onClick={openInGoogleMaps}
-                className="flex items-center gap-2 px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 hover:bg-rose-500/20 transition-all text-xs font-bold"
+                className="flex items-center gap-2 px-3 py-2 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 hover:bg-rose-500/20 transition-all text-[10px] font-bold"
               >
-                <ExternalLink size={14} />
-                Haritada Aç
+                <ExternalLink size={12} />
+                Aç
               </button>
               <button
                 onClick={openDirections}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-400 hover:bg-indigo-500/20 transition-all text-xs font-bold"
+                className="flex items-center gap-2 px-3 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-400 hover:bg-indigo-500/20 transition-all text-[10px] font-bold"
               >
-                <Navigation size={14} />
+                <Navigation size={12} />
                 Yol Tarifi
               </button>
             </div>

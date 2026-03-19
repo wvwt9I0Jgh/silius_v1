@@ -322,9 +322,11 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
   }, [id, user.id]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadLocationPhotos = async () => {
       if (!event?.location) {
-        setLocationPhotos([]);
+        if (isMounted) setLocationPhotos([]);
         return;
       }
 
@@ -335,10 +337,21 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
         maxPhotos: 8,
       });
 
-      setLocationPhotos(photos);
+      if (isMounted) {
+        setLocationPhotos(photos);
+      }
     };
 
     loadLocationPhotos();
+
+    const refreshTimer = window.setInterval(() => {
+      loadLocationPhotos();
+    }, 120000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(refreshTimer);
+    };
   }, [event?.id, event?.location, event?.latitude, event?.longitude]);
 
   useEffect(() => {
@@ -361,9 +374,10 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
   }, [event?.id, event?.location, event?.latitude, event?.longitude]);
 
   const heroImages = React.useMemo(() => {
-    const ordered = [event?.image, ...locationPhotos].filter(Boolean) as string[];
+    const galleryImages = gallery.map((item) => item.image_url).filter(Boolean);
+    const ordered = [event?.image, ...locationPhotos, ...galleryImages].filter(Boolean) as string[];
     return Array.from(new Set(ordered));
-  }, [event?.image, locationPhotos]);
+  }, [event?.image, locationPhotos, gallery]);
 
   useEffect(() => {
     setHeroSlideIndex(0);

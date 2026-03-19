@@ -241,7 +241,7 @@ const Landing: React.FC = () => {
            <div className="flex flex-col items-start gap-8 z-20">
               <div className="inline-flex items-center gap-3 px-4 py-2 border border-fuchsia-500/30 bg-fuchsia-500/10 backdrop-blur-md rounded-full text-xs font-bold text-fuchsia-400 tracking-[0.2em] uppercase origin-left animate-[scaleIn_0.5s_ease-out]">
                 <span className="w-2 h-2 rounded-full bg-fuchsia-500" style={{ boxShadow: '0 0 10px #d946ef' }} />
-                Silius Club Access // Beta
+                Silius sosial companiy / v1.0.0
               </div>
               
               <h1 className="text-[4.5rem] sm:text-[6rem] md:text-[8rem] lg:text-[9rem] font-black font-outfit uppercase leading-[0.85] tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-white/90 to-white/10 drop-shadow-[0_0_30px_rgba(255,255,255,0.15)] relative">
