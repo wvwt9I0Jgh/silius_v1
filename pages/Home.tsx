@@ -4,12 +4,14 @@ import { db } from '../database';
 import { Event, User } from '../types';
 import { Plus, MapPin, Calendar, Search, Zap, X, TrendingUp, Sparkles, Image as ImageIcon, Camera, Loader2, ArrowRight, Music, Waves, Home as HomeIcon, Footprints, PartyPopper, Beer, Coffee, AlertTriangle } from 'lucide-react';
 import LocationPicker from '../components/LocationPicker';
+import { DISTRICTS } from '../data/venues';
+import { fetchLocationPhotoUrls } from '../lib/googlePlaces';
 
 interface HomeProps {
   user: User;
 }
 
-type SortOption = 'created_desc' | 'popular' | 'date_desc' | 'date_asc' | 'vibe_score';
+type SortOption = 'created_desc' | 'popular' | 'date_desc' | 'date_asc' | 'vibe_score' | 'today';
 
 const CATEGORIES = [
   { id: 'all', label: 'HEPSİ', icon: Sparkles, color: 'indigo' },
@@ -35,6 +37,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
   const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [filter, setFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState<SortOption>('created_desc');
+  const [districtFilter, setDistrictFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -257,19 +260,32 @@ const Home: React.FC<HomeProps> = ({ user }) => {
         other: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format'
       };
 
+      const locationPhotos = await fetchLocationPhotoUrls({
+        query: newEvent.location,
+        latitude: newEvent.latitude,
+        longitude: newEvent.longitude,
+        maxPhotos: 6,
+      });
+
+      const fallbackImage = defaultImages[newEvent.category] || defaultImages.other;
+      const coverImage = newEvent.image || locationPhotos[0] || fallbackImage;
+
       const savedEvent = await db.saveEvent({
         ...newEvent,
         user_id: user.id,
-        image: newEvent.image || defaultImages[newEvent.category] || defaultImages.other,
+        image: coverImage,
         latitude: newEvent.latitude,
         longitude: newEvent.longitude
       });
 
       if (savedEvent) {
         // Galeri fotoğraflarını tek tek kaydet (bulk insert büyük base64 verilerde başarısız olabiliyor)
-        if (galleryImages.length > 0) {
+        const autoGalleryPhotos = locationPhotos.slice(1);
+        const mergedGalleryPhotos = [...galleryImages, ...autoGalleryPhotos];
+
+        if (mergedGalleryPhotos.length > 0) {
           let savedCount = 0;
-          for (const img of galleryImages) {
+          for (const img of mergedGalleryPhotos) {
             try {
               const result = await db.addGalleryPhoto(savedEvent.id, img);
               if (result) savedCount++;
@@ -277,8 +293,8 @@ const Home: React.FC<HomeProps> = ({ user }) => {
               console.error('Galeri fotoğrafı kaydedilemedi:', galleryErr);
             }
           }
-          if (savedCount < galleryImages.length) {
-            console.warn(`Galeri: ${galleryImages.length} fotoğraftan ${savedCount} tanesi kaydedildi.`);
+          if (savedCount < mergedGalleryPhotos.length) {
+            console.warn(`Galeri: ${mergedGalleryPhotos.length} fotoğraftan ${savedCount} tanesi kaydedildi.`);
           }
         }
 
@@ -301,6 +317,46 @@ const Home: React.FC<HomeProps> = ({ user }) => {
   const filteredAndSortedEvents = [...events]
     .filter(e => filter === 'all' || e.category === filter)
     .filter(e => {
+      if (districtFilter === 'all') return true;
+
+      const normalize = (value: string) =>
+        value
+          .toLocaleLowerCase('tr-TR')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/ı/g, 'i')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+      const districtMeta = DISTRICTS.find((d) => d.id === districtFilter);
+      const locationText = normalize(e.location || '');
+
+      if (!districtMeta) return false;
+
+      const aliases = [
+        districtMeta.label,
+        districtMeta.id,
+        districtMeta.id.replace(/-/g, ' '),
+        districtMeta.id.replace(/-/g, '/'),
+      ];
+
+      return aliases.some((alias) => locationText.includes(normalize(alias)));
+    })
+    .filter(e => {
+      if (sortOrder !== 'today') return true;
+
+      if (!e.date) return false;
+
+      const today = new Date();
+      const eventDate = new Date(e.date);
+
+      return (
+        eventDate.getFullYear() === today.getFullYear() &&
+        eventDate.getMonth() === today.getMonth() &&
+        eventDate.getDate() === today.getDate()
+      );
+    })
+    .filter(e => {
       if (!searchQuery.trim()) return true;
       const query = searchQuery.toLowerCase();
       return (
@@ -320,6 +376,9 @@ const Home: React.FC<HomeProps> = ({ user }) => {
       }
       if (sortOrder === 'vibe_score') {
         return (b.ownerVibeScore || 0) - (a.ownerVibeScore || 0);
+      }
+      if (sortOrder === 'today') {
+        return getTime(a.date) - getTime(b.date);
       }
       if (sortOrder === 'date_asc') {
         // Bugünün tarihine en yakın etkinlikler önce (mutlak fark)
@@ -408,7 +467,8 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
         {/* Filters */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div className="flex gap-2 overflow-x-auto pb-4 md:pb-0 scrollbar-hide mask-linear-fade">
+          <div className="flex flex-col gap-4 w-full md:w-auto">
+            <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide mask-linear-fade">
             {CATEGORIES.map((cat) => {
               const Icon = cat.icon;
               const isActive = filter === cat.id;
@@ -426,6 +486,28 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                 </button>
               );
             })}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-600/90 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest font-black whitespace-nowrap shadow-lg shadow-blue-500/20">
+                İlçe
+              </div>
+              <div className="relative min-w-[220px]">
+                <select
+                  value={districtFilter}
+                  onChange={(e) => setDistrictFilter(e.target.value)}
+                  className="w-full bg-[#0B0F19] border border-fuchsia-500/30 rounded-2xl pl-5 pr-10 py-3 text-[11px] font-black uppercase tracking-wider text-white appearance-none focus:outline-none focus:border-fuchsia-500/70 transition-all cursor-pointer hover:border-fuchsia-500/50 shadow-[0_0_15px_rgba(217,70,239,0.1)] hover:shadow-[0_0_20px_rgba(217,70,239,0.2)]"
+                >
+                  <option value="all" className="bg-[#1A1F2E] text-white font-bold py-2">TÜM İLÇELER</option>
+                  {DISTRICTS.map((district) => (
+                    <option key={district.id} value={district.id} className="bg-[#1A1F2E] text-white font-bold py-2">
+                      {district.label.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+                <MapPin size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-fuchsia-400/70 pointer-events-none" />
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 bg-bg-surface/50 p-1.5 rounded-xl border border-white/5 self-start md:self-auto flex-wrap">
@@ -434,6 +516,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
               { id: 'popular', label: 'POPÜLER', icon: TrendingUp },
               { id: 'vibe_score', label: 'EN VİBELİ', icon: Zap },
               { id: 'date_asc', label: 'TARİH', icon: Calendar },
+              { id: 'today', label: 'BUGÜNÜN PARTİLERİ', icon: PartyPopper },
             ].map((opt) => (
               <button
                 key={opt.id}
@@ -643,10 +726,10 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
         {/* Create Modal */}
         {showCreateModal && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300">
+          <div className="fixed inset-0 z-[220] overflow-y-auto bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300">
             <div className="min-h-full flex items-start md:items-center justify-center px-3 md:p-4 pt-4 pb-28 md:pb-8">
             <div
-              className="relative w-full max-w-2xl bg-slate-900 rounded-[2rem] md:rounded-[3rem] p-5 md:p-12 border border-white/10 shadow-2xl"
+              className="relative w-full max-w-4xl max-h-[calc(100vh-2rem)] bg-slate-900 rounded-[2rem] md:rounded-[3rem] p-5 md:p-12 border border-white/10 shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Glows */}
@@ -663,7 +746,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
                   </button>
                 </div>
 
-                <form onSubmit={handleCreateEvent} className="space-y-4 md:space-y-8">
+                <form onSubmit={handleCreateEvent} className="space-y-4 md:space-y-8 max-h-[calc(100vh-11rem)] overflow-y-auto pr-1 md:pr-2">
                     <div className="space-y-4">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Kapak Görseli</label>
                     <div

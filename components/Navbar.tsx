@@ -31,6 +31,8 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [cmsPages, setCmsPages] = useState<CMSPage[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const [desktopHovered, setDesktopHovered] = useState(false);
 
   useEffect(() => {
     loadNotifications();
@@ -38,6 +40,22 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
     const interval = setInterval(loadNotifications, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (window.innerWidth < 768) {
+      setDesktopCollapsed(false);
+      return;
+    }
+
+    setDesktopCollapsed(false);
+    const timer = window.setTimeout(() => {
+      setDesktopCollapsed(true);
+    }, 3200);
+
+    return () => window.clearTimeout(timer);
+  }, [location.pathname]);
 
   const loadCMSPages = async () => {
     try {
@@ -78,6 +96,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
   };
 
   const isAdmin = user.role === 'admin';
+  const isDesktopCompact = desktopCollapsed && !desktopHovered;
 
   const desktopNavItems = [
     { path: '/home', icon: LayoutDashboard, label: 'Akış' },
@@ -209,13 +228,17 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
         </div>
       )}
 
-      <nav className="hidden md:block fixed bottom-6 left-1/2 -translate-x-1/2 z-[140] w-[96%] max-w-5xl">
-        <div className="glass px-6 py-3 rounded-[2.5rem] flex items-center justify-between gap-3 border shadow-2xl transition-all overflow-visible">
+      <nav
+        className={`hidden md:block fixed bottom-6 left-1/2 -translate-x-1/2 z-[140] transition-all duration-500 ${isDesktopCompact ? 'w-[92px]' : 'w-[96%] max-w-5xl'}`}
+        onMouseEnter={() => setDesktopHovered(true)}
+        onMouseLeave={() => setDesktopHovered(false)}
+      >
+        <div className="glass px-4 py-3 rounded-[2.5rem] flex items-center justify-between gap-3 border shadow-2xl transition-all overflow-visible">
           <div className="flex items-center gap-1 pr-4 mr-4 border-r border-slate-500/20">
             <Link to="/home" className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center font-black text-white text-lg shadow-lg shadow-indigo-600/30">S</Link>
           </div>
 
-          <div className="flex items-center gap-1 flex-grow justify-start min-w-0">
+          <div className={`flex items-center gap-1 flex-grow justify-start min-w-0 transition-all duration-300 ${isDesktopCompact ? 'max-w-0 opacity-0 pointer-events-none overflow-hidden' : 'max-w-[1200px] opacity-100'}`}>
             {desktopNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -252,7 +275,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
             })}
           </div>
 
-          <div className="flex items-center gap-2 pl-4 ml-4 border-l border-slate-500/20 shrink-0">
+          <div className={`flex items-center gap-2 pl-4 ml-4 border-l border-slate-500/20 shrink-0 transition-all duration-300 ${isDesktopCompact ? 'max-w-0 opacity-0 pointer-events-none overflow-hidden' : 'max-w-[420px] opacity-100'}`}>
             {isAdmin && (
               <Link
                 to="/admin"
@@ -343,6 +366,12 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
               <LogOut size={20} strokeWidth={2.5} />
             </button>
           </div>
+
+          {isDesktopCompact && (
+            <div className="absolute left-[74px] top-1/2 -translate-y-1/2 text-[9px] font-black uppercase tracking-widest text-indigo-300/70 pointer-events-none">
+              Menü
+            </div>
+          )}
         </div>
       </nav>
 

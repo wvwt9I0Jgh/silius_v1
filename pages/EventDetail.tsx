@@ -9,6 +9,7 @@ import MapDisplay from '../components/MapDisplay';
 import QRCode from 'react-qr-code';
 import { Html5Qrcode } from 'html5-qrcode';
 import { toast } from 'react-hot-toast';
+import { fetchLocationPhotoUrls, geocodeAddressToCoordinates } from '../lib/googlePlaces';
 
 interface EventDetailProps {
   user: User;
@@ -65,6 +66,9 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
 
   // Kullanıcının zaten check-in yapıp yapmadığını takip et
   const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [locationPhotos, setLocationPhotos] = useState<string[]>([]);
+  const [heroSlideIndex, setHeroSlideIndex] = useState(0);
+  const [resolvedCoords, setResolvedCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const loadEventData = async () => {
     if (!id) return;
@@ -318,6 +322,64 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
   }, [id, user.id]);
 
   useEffect(() => {
+    const loadLocationPhotos = async () => {
+      if (!event?.location) {
+        setLocationPhotos([]);
+        return;
+      }
+
+      const photos = await fetchLocationPhotoUrls({
+        query: event.location,
+        latitude: event.latitude,
+        longitude: event.longitude,
+        maxPhotos: 8,
+      });
+
+      setLocationPhotos(photos);
+    };
+
+    loadLocationPhotos();
+  }, [event?.id, event?.location, event?.latitude, event?.longitude]);
+
+  useEffect(() => {
+    const resolveCoordinates = async () => {
+      if (!event?.location) {
+        setResolvedCoords(null);
+        return;
+      }
+
+      if (event.latitude && event.longitude) {
+        setResolvedCoords({ lat: event.latitude, lng: event.longitude });
+        return;
+      }
+
+      const coords = await geocodeAddressToCoordinates(event.location);
+      setResolvedCoords(coords);
+    };
+
+    resolveCoordinates();
+  }, [event?.id, event?.location, event?.latitude, event?.longitude]);
+
+  const heroImages = React.useMemo(() => {
+    const ordered = [event?.image, ...locationPhotos].filter(Boolean) as string[];
+    return Array.from(new Set(ordered));
+  }, [event?.image, locationPhotos]);
+
+  useEffect(() => {
+    setHeroSlideIndex(0);
+  }, [event?.id]);
+
+  useEffect(() => {
+    if (heroImages.length <= 1) return;
+
+    const interval = window.setInterval(() => {
+      setHeroSlideIndex((prev) => (prev + 1) % heroImages.length);
+    }, 20000);
+
+    return () => window.clearInterval(interval);
+  }, [heroImages]);
+
+  useEffect(() => {
     if (showParticipants) {
       loadParticipants();
     }
@@ -338,6 +400,9 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
   }
 
   if (!event) return null;
+
+  const mapLatitude = event.latitude ?? resolvedCoords?.lat;
+  const mapLongitude = event.longitude ?? resolvedCoords?.lng;
 
   const isOwner = event.user_id === user.id;
 
@@ -574,11 +639,23 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
     <div className="min-h-screen bg-[var(--bg-deep)] pb-32 transition-colors duration-500">
       <div className="relative h-[50vh] md:h-[70vh] w-full overflow-hidden">
         <img
-          src={event.image || `https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1600&auto=format`}
+          src={heroImages[heroSlideIndex] || `https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1600&auto=format`}
           className="w-full h-full object-cover"
           alt={event.title}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-deep)] via-transparent to-transparent"></div>
+
+        {heroImages.length > 1 && (
+          <div className="absolute bottom-8 right-8 z-20 flex items-center gap-2 px-3 py-2 rounded-xl bg-black/45 border border-white/10 backdrop-blur-sm">
+            {heroImages.map((_, index) => (
+              <span
+                key={`hero-dot-${index}`}
+                className={`w-2 h-2 rounded-full transition-all ${heroSlideIndex === index ? 'bg-white' : 'bg-white/35'}`}
+              />
+            ))}
+            <span className="text-[10px] text-white/70 font-bold ml-1">20sn</span>
+          </div>
+        )}
 
         {/* Devre Dışı büyük banner - tarihi geçmiş etkinlikler */}
         {isEventExpired && (
@@ -803,12 +880,12 @@ const EventDetail: React.FC<EventDetailProps> = ({ user }) => {
                 </div>
              </div>
 
-             {event.latitude && event.longitude && (
+             {(mapLatitude && mapLongitude) && (
                 <div className="rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl relative group">
                    <div className="absolute inset-0 border-4 border-white/5 z-20 pointer-events-none rounded-[2.5rem]"></div>
                    <MapDisplay
-                      latitude={event.latitude}
-                      longitude={event.longitude}
+                   latitude={mapLatitude}
+                   longitude={mapLongitude}
                       locationName={event.location}
                       height="350px"
                    />

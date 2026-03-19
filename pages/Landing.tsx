@@ -260,6 +260,7 @@ const Landing: React.FC = () => {
                    <span className="relative z-10">Listeye Gir</span>
                 </Link>
 
+
               </div>
            </div>
            

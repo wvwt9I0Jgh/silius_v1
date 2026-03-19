@@ -6,7 +6,14 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { supabase } from './lib/supabase';
 
-const OAUTH_REDIRECT_HOME_URL = 'https://silius-v1.vercel.app/#/home';
+const OAUTH_CALLBACK_PATH = import.meta.env.VITE_GOOGLE_OAUTH_CALLBACK_PATH || '/auth/google/callback';
+const OAUTH_REDIRECT_HOME_URL = `${window.location.origin}/#/home`;
+const OAUTH_REDIRECT_AUTH_URL = `${window.location.origin}/#/auth`;
+
+// Keep callback path normalized for diagnostics and compatibility.
+const _normalizedOAuthCallbackPath = OAUTH_CALLBACK_PATH.startsWith('/')
+  ? OAUTH_CALLBACK_PATH
+  : `/${OAUTH_CALLBACK_PATH}`;
 
 // 🔑 OAuth Callback Handler — HashRouter ile uyumlu
 // Supabase OAuth redirect sonrası URL'deki token/hata parametrelerini işle
@@ -14,6 +21,7 @@ const OAUTH_REDIRECT_HOME_URL = 'https://silius-v1.vercel.app/#/home';
 (async () => {
   const url = new URL(window.location.href);
   const hashFragment = window.location.hash;
+  const isOAuthCallbackPath = window.location.pathname === _normalizedOAuthCallbackPath;
 
   // 1. URL query params'da OAuth hatası var mı kontrol et
   const errorInQuery = url.searchParams.get('error');
@@ -21,14 +29,14 @@ const OAUTH_REDIRECT_HOME_URL = 'https://silius-v1.vercel.app/#/home';
   if (errorInQuery) {
     console.error('🔴 OAuth error:', errorInQuery, errorDescription);
     // Hata parametrelerini temizle ve auth sayfasına yönlendir
-    window.history.replaceState({}, '', window.location.origin + '/#/auth');
+    window.history.replaceState({}, '', OAUTH_REDIRECT_AUTH_URL);
     // Hata mesajını sessionStorage'a kaydet (Auth sayfasında gösterilecek)
     sessionStorage.setItem('silius_oauth_error', errorDescription || errorInQuery || 'Google ile giriş başarısız.');
   }
 
   // 2. Hash fragment'ta access_token varsa (OAuth başarılı)
   // HashRouter'ın "#/" prefix'i olmadan gelen hash'ler = Supabase OAuth token'ları
-  if (hashFragment && !hashFragment.startsWith('#/') && (hashFragment.includes('access_token') || hashFragment.includes('refresh_token'))) {
+  if ((isOAuthCallbackPath || (hashFragment && !hashFragment.startsWith('#/'))) && (hashFragment.includes('access_token') || hashFragment.includes('refresh_token'))) {
     console.log('🔑 OAuth token detected in URL hash, processing...');
     try {
       // Supabase'in URL'deki token'ı işlemesini bekle
@@ -36,18 +44,18 @@ const OAUTH_REDIRECT_HOME_URL = 'https://silius-v1.vercel.app/#/home';
       if (error) {
         console.error('🔴 Session retrieval error:', error);
         sessionStorage.setItem('silius_oauth_error', error.message);
-        window.location.replace(window.location.origin + '/#/auth');
+        window.location.replace(OAUTH_REDIRECT_AUTH_URL);
       } else if (data.session) {
         console.log('✅ OAuth session established:', data.session.user.email);
         // Token'ları URL'den temizle ve home'a yönlendir
         window.history.replaceState({}, '', OAUTH_REDIRECT_HOME_URL);
       } else {
         // Session alınamadıysa auth sayfasına gönder
-        window.history.replaceState({}, '', window.location.origin + '/#/auth');
+        window.history.replaceState({}, '', OAUTH_REDIRECT_AUTH_URL);
       }
     } catch (err) {
       console.error('🔴 OAuth callback processing error:', err);
-      window.history.replaceState({}, '', window.location.origin + '/#/auth');
+      window.history.replaceState({}, '', OAUTH_REDIRECT_AUTH_URL);
     }
   }
 
@@ -57,7 +65,7 @@ const OAUTH_REDIRECT_HOME_URL = 'https://silius-v1.vercel.app/#/home';
     const hashParams = new URLSearchParams(hashFragment.replace('#', ''));
     const hashError = hashParams.get('error_description') || hashParams.get('error') || 'Google ile giriş başarısız.';
     sessionStorage.setItem('silius_oauth_error', decodeURIComponent(hashError));
-    window.history.replaceState({}, '', window.location.origin + '/#/auth');
+    window.history.replaceState({}, '', OAUTH_REDIRECT_AUTH_URL);
   }
 })();
 
