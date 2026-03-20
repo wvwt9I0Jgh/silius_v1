@@ -7,6 +7,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import QRCode from 'react-qr-code';
+import { calculateAgeFromBirthDate, getDistrictLabel } from '../lib/profileUtils';
 
 interface ProfileProps {
   user: User;
@@ -18,6 +19,8 @@ interface EventWithParticipants extends Event {
 
 const Profile: React.FC<ProfileProps> = ({ user }) => {
   const { updateProfile, refreshProfile } = useAuth();
+  const calculatedAge = calculateAgeFromBirthDate(user.birthDate, user.age);
+  const districtLabel = getDistrictLabel(user.district);
   const [searchParams] = useSearchParams();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -359,10 +362,16 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               <p className="opacity-70 text-lg font-medium italic">{user.bio || "Hayat Silius'ta daha renkli."}</p>
               <div className="flex flex-wrap items-center gap-4">
                 {/* Yaş Gösterimi */}
-                {user.age && (
+                {calculatedAge && (
                   <p className="text-sm font-bold opacity-50 uppercase tracking-wider flex items-center gap-2">
                     <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                    🎂 {user.age} Yaşında
+                    🎂 {calculatedAge} Yaşında
+                  </p>
+                )}
+                {districtLabel && (
+                  <p className="text-sm font-bold opacity-50 uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-2 h-2 bg-cyan-500 rounded-full"></span>
+                    📍 {districtLabel}
                   </p>
                 )}
                 {/* Cinsiyet Gösterimi */}

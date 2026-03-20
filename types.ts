@@ -8,6 +8,8 @@ export interface User {
   bio?: string;
   avatar?: string;
   age?: number;
+  birthDate?: string;
+  district?: string;
   gender?: 'male' | 'female' | 'transgender' | 'lesbian' | 'gay' | 'bisexual_male' | 'bisexual_female' | 'prefer_not_to_say';
   role: 'user' | 'admin';
   hasAcceptedTerms?: boolean;

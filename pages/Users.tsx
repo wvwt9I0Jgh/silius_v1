@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../database';
 import { User } from '../types';
-import { UserPlus, Check, Search, Loader2, Mail, Calendar, X, Sparkles, Zap } from 'lucide-react';
+import { Check, Search, Loader2, Calendar, X, Sparkles, Zap, MapPin, ChevronRight } from 'lucide-react';
+import { calculateAgeFromBirthDate, getDistrictLabel, MUGLA_DISTRICT_OPTIONS } from '../lib/profileUtils';
 
 interface UsersProps {
   user: User;
@@ -16,6 +17,7 @@ const Users: React.FC<UsersProps> = ({ user }) => {
   const [allUsers, setAllUsers] = useState<UserWithVibeScore[]>([]);
   const [friends, setFriends] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [districtFilter, setDistrictFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [addingFriend, setAddingFriend] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserWithVibeScore | null>(null);
@@ -98,10 +100,15 @@ const Users: React.FC<UsersProps> = ({ user }) => {
     }
   };
 
-  const filteredUsers = allUsers.filter(item =>
-    `${item.user.firstName} ${item.user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.user.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = allUsers.filter((item) => {
+    const matchesSearch =
+      `${item.user.firstName} ${item.user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.user.username.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesDistrict = districtFilter === 'all' || item.user.district === districtFilter;
+
+    return matchesSearch && matchesDistrict;
+  });
 
   if (isLoading) {
     return (
@@ -124,6 +131,100 @@ const Users: React.FC<UsersProps> = ({ user }) => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 pb-32 relative z-10">
+        <div className="md:hidden mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-black tracking-tight text-text-main">Kişiler</h1>
+          </div>
+
+          <div className="relative mb-4">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
+            <input
+              type="text"
+              placeholder="Ara"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-2xl bg-white/10 border border-white/10 py-3 pl-11 pr-4 text-sm font-semibold text-text-main placeholder:text-text-muted focus:outline-none focus:border-indigo-500/50"
+            />
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 mb-3">
+            <button
+              onClick={() => setDistrictFilter('all')}
+              className={`shrink-0 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider border ${districtFilter === 'all'
+                ? 'bg-indigo-600 text-white border-indigo-500'
+                : 'bg-white/5 text-text-main/70 border-white/10'
+                }`}
+            >
+              Tum Ilceler
+            </button>
+            {MUGLA_DISTRICT_OPTIONS.map((district) => (
+              <button
+                key={district.value}
+                onClick={() => setDistrictFilter(district.value)}
+                className={`shrink-0 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider border ${districtFilter === district.value
+                  ? 'bg-indigo-600 text-white border-indigo-500'
+                  : 'bg-white/5 text-text-main/70 border-white/10'
+                  }`}
+              >
+                {district.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-[#040816]/80 overflow-hidden">
+            {filteredUsers.length === 0 ? (
+              <div className="p-8 text-center text-text-muted text-sm font-bold">Sonuc bulunamadi.</div>
+            ) : (
+              filteredUsers.map((item) => {
+                const u = item.user;
+                const userAge = calculateAgeFromBirthDate(u.birthDate, u.age);
+                const districtLabel = getDistrictLabel(u.district);
+                const isFriend = friends.includes(u.id);
+
+                return (
+                  <div
+                    key={u.id}
+                    onClick={() => setSelectedUser(item)}
+                    className="px-3 py-3 border-b border-white/5 last:border-b-0 flex items-center gap-3"
+                  >
+                    <img
+                      src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`}
+                      className="w-12 h-12 rounded-full object-cover"
+                      alt={u.username}
+                    />
+
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-sm text-text-main truncate">{u.username}</p>
+                      <p className="text-xs text-text-muted truncate">
+                        {u.firstName} {u.lastName}
+                        {districtLabel ? ` · ${districtLabel}` : ''}
+                        {userAge ? ` · ${userAge}` : ''}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!isFriend) addFriend(u.id);
+                      }}
+                      disabled={isFriend || addingFriend === u.id}
+                      className={`px-4 py-2 rounded-xl text-sm font-black ${isFriend
+                        ? 'bg-emerald-500/15 text-emerald-300'
+                        : 'bg-white/10 text-white'
+                        }`}
+                    >
+                      {addingFriend === u.id ? '...' : isFriend ? 'Bagli' : 'Ekle'}
+                    </button>
+
+                    <ChevronRight size={16} className="text-text-muted/60" />
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="hidden md:block">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
           <div className="relative">
@@ -151,6 +252,21 @@ const Users: React.FC<UsersProps> = ({ user }) => {
                 onChange={e => setSearchTerm(e.target.value)}
                 className="w-full bg-transparent border-none py-4 px-4 text-text-main placeholder:text-text-muted focus:outline-none text-sm font-bold font-outfit tracking-wide"
               />
+            </div>
+            <div className="relative mt-3">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
+              <select
+                value={districtFilter}
+                onChange={(e) => setDistrictFilter(e.target.value)}
+                className="w-full bg-bg-surface border border-white/10 rounded-xl py-3 pl-10 pr-3 text-xs font-bold text-text-main uppercase tracking-wider outline-none focus:border-indigo-500/50"
+              >
+                <option value="all">Tum Ilceler</option>
+                {MUGLA_DISTRICT_OPTIONS.map((district) => (
+                  <option key={district.value} value={district.value}>
+                    {district.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -203,9 +319,16 @@ const Users: React.FC<UsersProps> = ({ user }) => {
                     </h3>
                     <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-4">@{u.username}</p>
 
-                    <div className="w-full flex justify-center gap-2 mb-6">
-                      {u.age && (
-                        <span className="px-3 py-1 bg-white/5 rounded-lg text-[10px] font-bold text-text-muted">{u.age} YAŞ</span>
+                    <div className="w-full flex justify-center gap-2 mb-6 flex-wrap">
+                      {calculateAgeFromBirthDate(u.birthDate, u.age) && (
+                        <span className="px-3 py-1 bg-white/5 rounded-lg text-[10px] font-bold text-text-muted">
+                          {calculateAgeFromBirthDate(u.birthDate, u.age)} YAŞ
+                        </span>
+                      )}
+                      {u.district && (
+                        <span className="px-3 py-1 bg-white/5 rounded-lg text-[10px] font-bold text-text-muted uppercase flex items-center gap-1">
+                          <MapPin size={10} /> {getDistrictLabel(u.district)}
+                        </span>
                       )}
                       {u.gender && u.gender !== 'prefer_not_to_say' && (
                         <span className="px-3 py-1 bg-white/5 rounded-lg text-[10px] font-bold text-text-muted uppercase">
@@ -245,6 +368,7 @@ const Users: React.FC<UsersProps> = ({ user }) => {
               );
             })
           )}
+        </div>
         </div>
 
         {/* Modal */}
@@ -287,6 +411,14 @@ const Users: React.FC<UsersProps> = ({ user }) => {
                     <span className="text-indigo-400 text-xs font-black tracking-widest">@{selectedUser.user.username.toUpperCase()}</span>
                     <span className="w-1 h-1 rounded-full bg-slate-600"></span>
                     <span className="text-text-muted text-xs font-bold">LVL 1</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-text-muted font-bold uppercase tracking-wider">
+                    {calculateAgeFromBirthDate(selectedUser.user.birthDate, selectedUser.user.age) && (
+                      <span>{calculateAgeFromBirthDate(selectedUser.user.birthDate, selectedUser.user.age)} Yaş</span>
+                    )}
+                    {selectedUser.user.district && (
+                      <span>· {getDistrictLabel(selectedUser.user.district)}</span>
+                    )}
                   </div>
                   {selectedUser.user.gender && selectedUser.user.gender !== 'prefer_not_to_say' && (
                     <span className="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-text-muted uppercase tracking-wider">

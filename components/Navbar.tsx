@@ -11,10 +11,7 @@ import {
   Shield,
   FileText,
   QrCode,
-  Menu,
-  X,
-  Camera,
-  Info as InfoIcon
+  Compass
 } from 'lucide-react';
 import { db } from '../database';
 import { CMSPage } from '../types';
@@ -30,7 +27,6 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [cmsPages, setCmsPages] = useState<CMSPage[]>([]);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const [desktopHovered, setDesktopHovered] = useState(false);
 
@@ -106,24 +102,16 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
     { path: '/my-qr', icon: QrCode, label: "QR'ım" },
   ];
 
-  const mobileMenuItems = [
+  const mobileBottomNavItems = [
     { path: '/home', icon: LayoutDashboard, label: 'Akış' },
     { path: '/users', icon: Users, label: 'Kişiler' },
     { path: '/friends', icon: Heart, label: 'Çevrem' },
-    { path: '/profile', icon: UserIcon, label: 'Ben' },
+    { path: '/my-qr', icon: QrCode, label: "QR'ım" },
   ];
 
   return (
     <>
       <div className="md:hidden fixed top-4 left-4 right-4 z-[160] flex items-center justify-between pointer-events-none">
-        <button
-          onClick={() => setMobileMenuOpen(true)}
-          className="pointer-events-auto w-12 h-12 rounded-2xl border border-white/15 bg-bg-surface/80 backdrop-blur-xl text-text-main flex items-center justify-center"
-          aria-label="Menüyü aç"
-        >
-          <Menu size={20} />
-        </button>
-
         <Link
           to="/profile"
           className="pointer-events-auto relative w-12 h-12 rounded-2xl border border-white/20 bg-bg-surface/80 backdrop-blur-xl p-1 overflow-hidden"
@@ -134,99 +122,82 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
             alt="profile"
             className="w-full h-full object-cover rounded-xl"
           />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-[10px] font-black text-white flex items-center justify-center">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
         </Link>
-      </div>
 
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[170]">
+        <div className="pointer-events-auto relative flex flex-col items-end gap-2">
           <button
-            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
-            onClick={() => setMobileMenuOpen(false)}
-            aria-label="Menüyü kapat"
-          />
+            onClick={handleNotificationClick}
+            className="w-12 h-12 rounded-2xl border border-white/15 bg-bg-surface/80 backdrop-blur-xl text-text-main flex items-center justify-center relative"
+            aria-label="Bildirimler"
+          >
+            <Bell size={18} className="text-text-main/80" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-[10px] font-black text-white flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
 
-          <aside className="absolute top-0 left-0 h-full w-[84%] max-w-sm bg-[#080512] border-r border-indigo-500/25 p-5 flex flex-col">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-sm font-black uppercase tracking-[0.24em] text-indigo-300">Menü</h3>
-              <button
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-10 h-10 rounded-xl border border-white/15 text-text-main/70 flex items-center justify-center"
-                aria-label="Kapat"
-              >
-                <X size={18} />
-              </button>
-            </div>
+          <button
+            onClick={onLogout}
+            className="w-12 h-10 rounded-xl border border-white/15 bg-bg-surface/80 backdrop-blur-xl text-text-main/80 hover:text-rose-300 hover:border-rose-500/40 flex items-center justify-center transition-all"
+            aria-label="Çıkış yap"
+          >
+            <LogOut size={16} />
+          </button>
 
-            <div className="space-y-2">
-              {mobileMenuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`w-full flex items-center gap-3 rounded-2xl px-4 py-3 border transition-all ${isActive
-                      ? 'border-indigo-500/60 bg-indigo-500/20 text-white'
-                      : 'border-white/10 bg-white/[0.03] text-text-main/80'
-                      }`}
+          {showNotifications && (
+            <div className="absolute top-[calc(100%+10px)] right-0 w-[86vw] max-w-sm glass rounded-2xl p-4 shadow-2xl z-[180] border border-indigo-500/20">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-black uppercase text-xs">Bildirimler</h3>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllRead}
+                    className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700"
                   >
-                    <Icon size={18} />
-                    <span className="text-sm font-bold uppercase tracking-[0.18em]">{item.label}</span>
-                  </Link>
-                );
-              })}
+                    Tümünü Oku
+                  </button>
+                )}
+              </div>
 
-              {cmsPages.map((page) => {
-                const isActive = location.pathname === `/page/${page.slug}`;
-                return (
-                  <Link
-                    key={page.id}
-                    to={`/page/${page.slug}`}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`w-full flex items-center gap-3 rounded-2xl px-4 py-3 border transition-all ${isActive
-                      ? 'border-emerald-500/60 bg-emerald-500/20 text-white'
-                      : 'border-white/10 bg-white/[0.03] text-text-main/80'
-                      }`}
-                  >
-                    <FileText size={18} />
-                    <span className="text-sm font-bold uppercase tracking-[0.18em]">{page.title}</span>
-                  </Link>
-                );
-              })}
+              <div className="max-h-64 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-4">Bildirim yok</p>
+                ) : (
+                  <div className="space-y-2">
+                    {notifications.map((notif: any) => (
+                      <Link
+                        key={notif.id}
+                        to={notif.link || '/home'}
+                        onClick={() => { db.markNotificationAsRead(notif.id); setShowNotifications(false); }}
+                        className={`block p-2 rounded-xl transition-all ${notif.is_read ? 'bg-slate-500/5' : 'bg-indigo-600/10'} hover:bg-indigo-600/20`}
+                      >
+                        <div className="flex items-start gap-2">
+                          {notif.from_user && (
+                            <img
+                              src={notif.from_user.avatar}
+                              alt={notif.from_user.username}
+                              className="w-7 h-7 rounded-full"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold">{notif.title}</p>
+                            <p className="text-[10px] text-slate-500 line-clamp-2">{notif.message}</p>
+                            <p className="text-[9px] text-slate-400 mt-1">
+                              {new Date(notif.created_at).toLocaleDateString('tr-TR')}
+                            </p>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
-
-            <div className="mt-auto space-y-2">
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 border border-rose-500/40 bg-rose-500/10 text-rose-300"
-                >
-                  <Shield size={18} />
-                  <span className="text-sm font-bold uppercase tracking-[0.18em]">Admin</span>
-                </Link>
-              )}
-
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onLogout();
-                }}
-                className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 border border-white/15 bg-white/[0.03] text-text-main/80"
-              >
-                <LogOut size={18} />
-                <span className="text-sm font-bold uppercase tracking-[0.18em]">Çıkış</span>
-              </button>
-            </div>
-          </aside>
+          )}
         </div>
-      )}
+      </div>
 
       <nav
         className={`hidden md:block fixed bottom-6 left-1/2 -translate-x-1/2 z-[140] transition-all duration-500 ${isDesktopCompact ? 'w-[92px]' : 'w-[96%] max-w-5xl'}`}
@@ -375,18 +346,28 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
         </div>
       </nav>
 
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[165]">
-        <Link
-          to="/my-qr"
-          className={`px-7 py-4 rounded-2xl border backdrop-blur-xl flex items-center gap-3 text-xs font-black uppercase tracking-[0.25em] transition-all ${location.pathname === '/my-qr'
-            ? 'bg-indigo-600 text-white border-indigo-500 shadow-[0_10px_35px_rgba(79,70,229,0.55)]'
-            : 'bg-bg-surface/85 text-text-main/85 border-white/20'
-            }`}
-        >
-          <QrCode size={18} />
-          <span>QR'ım</span>
-        </Link>
-      </div>
+      <nav className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-[170] w-[94%] max-w-md">
+        <div className="rounded-[2rem] border border-white/10 bg-[#050713]/90 backdrop-blur-2xl px-3 py-2 flex items-center justify-between shadow-[0_12px_40px_rgba(2,6,23,0.65)]">
+          {mobileBottomNavItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                aria-label={item.label}
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isActive
+                  ? 'bg-indigo-600 text-white shadow-[0_8px_22px_rgba(79,70,229,0.5)]'
+                  : 'text-text-main/75 hover:text-white hover:bg-white/10'
+                  }`}
+              >
+                <Icon size={21} strokeWidth={2.5} />
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </>
   );
 };

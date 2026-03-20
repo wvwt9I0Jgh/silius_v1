@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, Calendar, Users, ArrowRight, Loader2, Sparkles, AtSign, Check, ChevronRight } from 'lucide-react';
+import { User, Calendar, Users, MapPin, Loader2, Sparkles, AtSign, Check, ChevronRight } from 'lucide-react';
+import { calculateAgeFromBirthDate, MUGLA_DISTRICT_OPTIONS } from '../lib/profileUtils';
 
 const ProfileSetup: React.FC = () => {
     const navigate = useNavigate();
@@ -18,7 +19,8 @@ const ProfileSetup: React.FC = () => {
         firstName: profile?.firstName || user?.user_metadata?.full_name?.split(' ')[0] || user?.user_metadata?.firstName || '',
         lastName: profile?.lastName || user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || user?.user_metadata?.lastName || '',
         username: profile?.username || user?.user_metadata?.username || user?.email?.split('@')[0] || '',
-        age: '',
+        birthDate: profile?.birthDate || '',
+        district: profile?.district || '',
         gender: '' as string
     });
 
@@ -51,8 +53,21 @@ const ProfileSetup: React.FC = () => {
             return;
         }
 
-        if (!formData.age || parseInt(formData.age) < 18 || parseInt(formData.age) > 30) {
+        if (!formData.birthDate) {
+            setError('Lütfen doğum tarihinizi seçin.');
+            setIsLoading(false);
+            return;
+        }
+
+        const calculatedAge = calculateAgeFromBirthDate(formData.birthDate);
+        if (!calculatedAge || calculatedAge < 18 || calculatedAge > 30) {
             setError('Yaşınız 18-30 arasında olmalıdır.');
+            setIsLoading(false);
+            return;
+        }
+
+        if (!formData.district) {
+            setError('Lütfen yaşadığınız ilçeyi seçin.');
             setIsLoading(false);
             return;
         }
@@ -68,7 +83,9 @@ const ProfileSetup: React.FC = () => {
                 firstName: formData.firstName.trim(),
                 lastName: formData.lastName.trim(),
                 username: formData.username.trim(),
-                age: parseInt(formData.age),
+                birthDate: formData.birthDate,
+                age: calculatedAge,
+                district: formData.district,
                 gender: formData.gender as any,
                 isProfileComplete: true
             });
@@ -194,25 +211,43 @@ const ProfileSetup: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Yaş */}
+                            {/* Doğum Tarihi */}
                             <div className="space-y-2 group">
                                 <label className="text-[10px] font-black text-zinc-500 group-focus-within:text-cyan-400 uppercase tracking-widest transition-colors ml-1 flex justify-between">
-                                    <span>YAŞ</span>
+                                    <span>DOĞUM TARİHİ</span>
                                     <span className="text-zinc-600 tracking-normal">18-30</span>
                                 </label>
                                 <div className="relative">
                                     <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-cyan-400 transition-colors" size={18} />
                                     <input
-                                        type="number"
-                                        min="18"
-                                        max="30"
-                                        value={formData.age}
-                                        onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                                        type="date"
+                                        value={formData.birthDate}
+                                        onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
                                         className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl pl-12 pr-4 py-4 text-sm font-semibold focus:border-cyan-500/50 focus:bg-zinc-800/80 focus:ring-4 focus:ring-cyan-500/10 transition-all outline-none placeholder:text-zinc-600"
-                                        placeholder="Sadece 18+"
                                         required
                                     />
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Ilce */}
+                        <div className="space-y-2 group">
+                            <label className="text-[10px] font-black text-zinc-500 group-focus-within:text-cyan-400 uppercase tracking-widest transition-colors ml-1">YAŞADIĞIN İLÇE</label>
+                            <div className="relative">
+                                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-cyan-400 transition-colors" size={18} />
+                                <select
+                                    value={formData.district}
+                                    onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                                    className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl pl-12 pr-4 py-4 text-sm font-semibold focus:border-cyan-500/50 focus:bg-zinc-800/80 focus:ring-4 focus:ring-cyan-500/10 transition-all outline-none"
+                                    required
+                                >
+                                    <option value="">İlçe seç</option>
+                                    {MUGLA_DISTRICT_OPTIONS.map((district) => (
+                                        <option key={district.value} value={district.value}>
+                                            {district.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
 

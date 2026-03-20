@@ -12,6 +12,8 @@ interface UserProfile {
   bio?: string;
   avatar?: string;
   age?: number;
+  birthDate?: string;
+  district?: string;
   gender?: 'male' | 'female' | 'transgender' | 'lesbian' | 'gay' | 'bisexual_male' | 'bisexual_female' | 'prefer_not_to_say';
   role: 'user' | 'admin';
   hasAcceptedTerms?: boolean;
@@ -514,9 +516,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       if (!user) throw new Error('Oturum açık değil');
 
+      // Dogum tarihi bir kez set edildikten sonra degistirilemez.
+      const safeData = { ...data };
+      if (profile?.birthDate && safeData.birthDate && safeData.birthDate !== profile.birthDate) {
+        delete safeData.birthDate;
+      }
+
       const { error } = await supabase
         .from('users')
-        .update(data)
+        .update(safeData)
         .eq('id', user.id);
 
       if (error) throw error;
