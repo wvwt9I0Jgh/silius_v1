@@ -1,574 +1,461 @@
-# Silius Community Platform — Product Requirements Document (PRD)
+# Silius Community Platform - Product Requirements Document (PRD)
 
-**Versiyon:** 1.0  
-**Tarih:** 6 Mart 2026  
-**Proje Adı:** Silius Community Platform  
-**Platform Türü:** Sosyal Topluluk & Etkinlik Keşif Platformu  
+**Versiyon:** 1.1 (Mevcut Uygulama Durumu)
+**Tarih:** 21 Mart 2026
+**Proje Adi:** Silius Community Platform
+**Platform Turu:** Sosyal Topluluk ve Etkinlik Kesif Platformu
 
 ---
 
-## 1. Ürün Özeti
+## 1. Urun Ozeti
 
-Silius, Muğla bölgesindeki gençleri hedef alan modern bir sosyal topluluk platformudur. Kullanıcılar "vibe" adı verilen etkinlikler oluşturarak dijital ve gerçek dünya bağlantılarını birleştirir. Platform; etkinlik keşfi, arkadaşlık sistemi, QR check-in, topluluk oluşturma ve mekan rehberi gibi temel özellikleri bir arada sunar.
+Silius, Mugla bolgesindeki 18-30 yas arasi kullanicilari hedefleyen mobil-oncelikli bir sosyal topluluk platformudur. Kullanici deneyimi "vibe" (etkinlik) merkezinde kurgulanmistir:
 
-**Temel Değer Önerisi:** Her ruh haline uygun etkinlikler — sessiz bir kahve buluşmasından gece kulübü partisine kadar — oluşturup keşfetmeyi sağlayan, mobil öncelikli bir sosyal platform.
+- Etkinlik olusturma ve kesfetme
+- Arkadaslik/takip iliskileri
+- QR check-in ile fiziksel katilim dogrulama
+- Vibe skoru ile topluluk katkisi olcumu
+- CMS tabanli dinamik sayfalar
+- Site galerisi (topluluk anlari)
+
+Bu dokuman, kod tabaninda aktif olan mevcut ozellikleri baz alir.
 
 ---
 
 ## 2. Hedef Kitle
 
-| Segment | Açıklama |
+| Segment | Aciklama |
 |---------|----------|
-| **Birincil** | 18-30 yaş arası Muğla bölgesindeki gençler |
-| **İkincil** | Tatilciler, üniversite öğrencileri, dijital göçebeler |
-| **Üçüncül** | Mekan sahipleri, etkinlik organizatörleri |
-
-### Kullanıcı Personaları
-
-- **Keşifçi Öğrenci:** Üniversite çevresinde sosyalleşmek isteyen, yeni mekanlar arayan genç
-- **Parti Organizatörü:** Beach/rave/house partileri düzenleyen, katılımcı toplamak isteyen kişi
-- **Sakin Sosyalleşmeci:** Kahve buluşmaları ve küçük gruplarla vakit geçirmeyi tercih eden kullanıcı
-- **Turist/Tatilci:** Bölgedeki gece hayatı ve etkinlikleri keşfetmek isteyen ziyaretçi
+| Birincil | 18-30 yas arasi Mugla bolgesindeki gencler |
+| Ikincil | Tatilciler, universite ogrencileri, dijital gocebeler |
+| Ucuncul | Mekan sahipleri, etkinlik organizatorleri |
 
 ---
 
-## 3. Teknik Altyapı
+## 3. Teknik Altyapi
 
-### 3.1 Teknoloji Yığını
+### 3.1 Teknoloji Yigini
 
-| Katman | Teknoloji | Versiyon | Amaç |
+| Katman | Teknoloji | Versiyon | Amac |
 |--------|-----------|----------|------|
-| **Frontend Framework** | React | 19.2.3 | UI bileşen framework'ü |
-| **Dil** | TypeScript | 5.8.2 | Tip güvenliği |
-| **Build Aracı** | Vite | 6.2.0 | Geliştirme sunucusu & build (port: 3000) |
-| **Router** | React Router | 7.11.0 | SPA yönlendirme (HashRouter) |
-| **Stilizasyon** | Tailwind CSS | 4.1.18 | Utility-first CSS |
-| **İkonlar** | Lucide React | 0.562.0 | SVG ikon kütüphanesi |
-| **Bildirimler** | React Hot Toast | 2.6.0 | Toast bildirimleri |
-| **QR Kod** | React QR Code | 2.0.18 | QR kod oluşturma |
-| **Backend** | Supabase | - | BaaS (Auth, DB, Storage, Realtime) |
-| **Veritabanı** | PostgreSQL | - | Supabase üzerinden yönetilen |
-| **Deployment** | Docker + Nginx | - | Konteyner tabanlı dağıtım |
+| Frontend Framework | React | 19.2.3 | UI bilesenleri |
+| Dil | TypeScript | 5.8.2 | Tip guvenligi |
+| Build Araci | Vite | 6.2.0 | Gelistirme ve build (port 3000) |
+| Router | React Router DOM | 7.11.0 | SPA yonlendirme (HashRouter) |
+| Stilizasyon | Tailwind CSS | 4.1.18 | Utility-first CSS |
+| Ikon Kutuphanesi | Lucide React | 0.562.0 | SVG ikonlar |
+| Bildirimler | React Hot Toast | 2.6.0 | Toast bildirimleri |
+| QR Kod Uretimi | react-qr-code | 2.0.18 | QR uretimi |
+| QR Tarama | html5-qrcode | 2.3.8 | Kamera ile QR tarama |
+| Medya Donusumu | heic2any | 0.0.4 | HEIC gorsel donusumu |
+| Backend | Supabase | 2.39.0 | Auth, DB, Storage, Realtime |
+| Veritabani | PostgreSQL | Supabase | Kalici veri katmani |
+| Dagitim | Docker + Nginx | - | Konteyner tabanli deployment |
 
-### 3.2 Harici Entegrasyonlar
+### 3.2 Entegrasyonlar
 
-| Entegrasyon | Amaç |
+| Entegrasyon | Amac |
 |-------------|------|
-| **Google OAuth** | Sosyal giriş (Google hesabıyla) |
-| **Google Maps Embed API** | Mekan haritaları & konum gösterimi |
-| **Unsplash API** | Etkinlikler için otomatik görsel önerileri |
-| **Supabase Storage** | Avatar ve galeri fotoğrafları depolama |
-| **Supabase Realtime** | Canlı katılımcı sayısı güncellemeleri |
+| Google OAuth | Sosyal giris |
+| Google Maps (Embed/Places) | Konum secimi ve mekan gosterimi |
+| Supabase Storage | Avatar ve galeri gorselleri |
+| Supabase Realtime | Canli katilim/check-in sayaclari |
+
+Not: Uygulama kodunda `GEMINI_API_KEY` build-time degiskeni tanimlidir, ancak cekirdek urun akislarinda zorunlu bagimlilik degildir.
 
 ---
 
-## 4. Fonksiyonel Gereksinimler
+## 4. Fonksiyonel Gereksinimler (Mevcut)
 
-### 4.1 Kimlik Doğrulama & Yetkilendirme
+### 4.1 Kimlik Dogrulama ve Yetkilendirme
 
-#### FR-AUTH-001: E-posta/Şifre Kayıt
-- Kullanıcı e-posta ve şifre ile kayıt olabilmeli
-- KVKK onay kutucuğu zorunlu olmalı
-- Kayıt sonrası `users` tablosuna otomatik profil satırı oluşturulmalı
-- Oturum `sessionStorage` ile yönetilmeli (tarayıcı kapanınca temizlenir)
+#### FR-AUTH-001: E-posta/Sifre Kayit ve Giris
+- E-posta-sifre ile kayit/giris desteklenir.
+- KVKK onayi kayit sirasinda alinabilir (`kvkkConsent`).
+- Basarili kayit sonrasi `users` tablosunda profil satiri uretilir.
+- Oturum `sessionStorage` ile tutulur.
 
-#### FR-AUTH-002: Google OAuth Giriş
-- Kullanıcı Google hesabıyla tek tıkla giriş yapabilmeli
-- OAuth callback sonrası profil yoksa otomatik oluşturulmalı
-- Yönlendirme: `/#/home`
+#### FR-AUTH-002: Google OAuth Giris
+- Google ile tek tik giris desteklenir.
+- OAuth callback hash/query carpisma senaryolari ozel olarak ele alinir.
+- Basarili giris sonrasi yonlendirme `/#/home`.
 
-#### FR-AUTH-003: Profil Tamamlama
-- İlk giriş sonrası `isProfileComplete === false` ise ProfileSetup sayfasına yönlendirilme
-- Ad, soyad, kullanıcı adı, yaş, cinsiyet, bio zorunlu alanlar
-- Tamamlanmadan platforma erişim engellenmeli
+#### FR-AUTH-003: Profil Tamamlama Zorunlulugu
+- `isProfileComplete === false` ise kullanici `/#/profile-setup` ekranina yonlendirilir.
+- Zorunlu alanlar: ad, soyad, kullanici adi, dogum tarihi, ilce, cinsiyet.
+- Yas dogum tarihinden hesaplanir ve 18-30 araligi dogrulanir.
 
-#### FR-AUTH-004: Oturum Yönetimi
-- Profil cache: `silius_profile_cache` (localStorage, 10 dakika TTL)
-- Token otomatik yenileme (`autoRefreshToken: true`)
-- Maksimum yükleme süresi: 3 saniye (timeout sonrası UI gösterilir)
-- Profil fetch timeout: 2 saniye
+#### FR-AUTH-004: Yukleme ve Cache Davranisi
+- Profil cache key: `silius_profile_cache`.
+- Cache TTL: 10 dakika.
+- Profil fetch timeout: 1.5 saniye.
+- Auth loading fail-safe timeout: 2 saniye.
+- App-level force-show timeout: 2.5 saniye.
 
-#### FR-AUTH-005: Gizli Admin Girişi
-- Landing sayfasında logoya 3 kez tıklama ile gizli admin paneli
-- Şifre doğrulama ile `localStorage` tabanlı admin yetkisi
-- Supabase Auth rolü gerektirmeden admin erişimi sağlama
+#### FR-AUTH-005: Gizli Admin Girisi
+- Landing uzerinden logo tiklama deseni ile gizli admin erisimi acilabilir.
+- `localStorage` anahtari: `silius_admin_auth`.
+- Normal admin rolune ek olarak bu mekanizma da admin rotalarina gecis saglar.
 
 ### 4.2 Vibe (Etkinlik) Sistemi
 
-#### FR-VIBE-001: Etkinlik Oluşturma
-- 8 kategori: `club`, `rave`, `beach`, `house`, `street`, `pub`, `coffee`, `other`
-- Zorunlu alanlar: başlık, açıklama, tarih, konum, kategori, görsel
-- Günlük limit: Kullanıcı başına **3 vibe/gün** (gece yarısı sıfırlanır)
-- Limit aşıldığında kalan süre gösterilmeli
-- LocationPicker ile mekan seçimi (İlçe → Mekan veya manuel giriş)
+#### FR-VIBE-001: Etkinlik Olusturma
+- Kategoriler: `club`, `rave`, `beach`, `house`, `street`, `pub`, `coffee`, `other`.
+- Alanlar: baslik, aciklama, tarih, konum, kategori, gorsel.
+- Koordinat alanlari (`latitude`, `longitude`) opsiyoneldir.
+- Gunluk limit: kullanici basi 3 vibe/gun.
+- Etkinlik sahibi olusturdugu etkinlige otomatik katilimci ve `checked_in = true` olarak eklenir.
 
-#### FR-VIBE-002: Etkinlik Listeleme & Filtreleme
-- Sıralama seçenekleri: En yeni, En popüler, En yüksek vibe skoru, Tarih (en yakın)
-- Kategori filtresi (tek veya çoklu)
-- Metin araması (başlık + açıklama)
-- 2 dakikalık localStorage cache
+#### FR-VIBE-002: Etkinlik Listeleme
+- En yeniye gore listeleme temel davranistir.
+- Ek filtreleme/siralama UI tarafinda desteklenir.
 
 #### FR-VIBE-003: Etkinlik Detay
-- Tam bilgi gösterimi: başlık, açıklama, tarih, konum, harita
-- Galeri fotoğrafları (lightbox görünüm)
-- Katılımcı listesi
-- Yorumlar (iç içe yanıtlar destekli)
-- Oluşturanın vibe skoru
-- Check-in sayacı (gerçek zamanlı)
-- QR kod gösterimi
+- Baslik, aciklama, tarih, konum, harita, katilim ve check-in bilgileri gosterilir.
+- Etkinlik galerisi, yorumlar ve nested reply destegi vardir.
 
-#### FR-VIBE-004: Etkinliğe Katılma/Ayrılma
-- Tek tıkla katılma (`event_participants` ekleme)
-- Katılımdan çıkma
-- Katılımcı sayısı gerçek zamanlı güncelleme
+#### FR-VIBE-004: Katilim Isletimi
+- `joinEvent(eventId)` ile katilim.
+- `leaveEvent(eventId)` ile ayrilma.
+- `getParticipantCount` ve `getLiveParticipantCount` ile metrikler.
 
 ### 4.3 QR Check-in Sistemi
 
-#### FR-CHECKIN-001: QR Kod Oluşturma
-- Her etkinlik için benzersiz QR kod
-- URL formatı: `https://domain/#/checkin/{eventId}`
-- MyQR sayfasında kullanıcının kendi etkinliklerinin QR kodları
+#### FR-CHECKIN-001: QR Uretim
+- Her etkinlik icin check-in URL'si `/#/checkin/:eventId` formatinda olusturulur.
+- `MyQR` sayfasinda kullanicinin etkinliklerine ait QR kodlar listelenir.
 
-#### FR-CHECKIN-002: Check-in İşlemi
-- QR tarama → CheckInPage'e yönlendirme
-- Otomatik etkinliğe katılma + `checked_in = true` işaretleme
-- Vibe puanı kazanma animasyonu
-- Canlı katılımcı sayısı (Supabase Realtime)
+#### FR-CHECKIN-002: QR Check-in
+- QR tarama sonrasi CheckIn sayfasina yonlendirme.
+- `checkInToEvent(eventId, userId)` ile kullanici check-in durumuna gecirilir.
+- Gerekirse kayit `delete + insert` stratejisi ile RLS uyumlu sekilde yenilenir.
 
-### 4.4 Arkadaşlık Sistemi
+### 4.4 Arkadaslik Sistemi
 
-#### FR-FRIEND-001: Arkadaş Ekleme
-- Tek yönlü ilişki (A→B, B→A otomatik değil)
-- Ekleme sonrası bildirim oluşturma
+#### FR-FRIEND-001: Tek Yonlu Arkadas Ekleme
+- Arkadaslik iliskisi tek yonludur (`friends.user_id -> friend_id`).
+- Kendini ekleme engellenir.
+- Duplicate durumlari idempotent ele alinir.
 
-#### FR-FRIEND-002: Arkadaş Listeleri
-- "Ağınız" sekmesi: Kullanıcının eklediği arkadaşlar
-- "Takipçilerim" sekmesi: Kullanıcıyı ekleyenler
-- Cinsiyet ikonları ile gösterim
+#### FR-FRIEND-002: Iki Liste Gorunumu
+- "Cevrem": kullanicinin ekledikleri (`getFriends`).
+- "Beni Ekleyenler": ters iliski (`getReverseFriends`).
 
-#### FR-FRIEND-003: Arkadaş Silme
-- Tek yönlü ilişki kaldırma
+Not: Kod tabaninda su an `removeFriend` operasyonu bulunmamaktadir.
 
-### 4.5 Vibe Skor Sistemi
+### 4.5 Vibe Skor ve Aktivite
 
-#### FR-SCORE-001: Skor Hesaplama
-- Oluşturulan etkinlik sayısı
-- Katılınan etkinlik sayısı
-- Platformda geçirilen süre (5 dakikada bir izleme)
-- Check-in'lerden kazanılan puanlar
+#### FR-SCORE-001: Skor Bilesenleri
+- Olusturulan etkinlikler.
+- Katilinan etkinlikler.
+- Platformda gecirilen sure (`totalTimeSpent`).
 
-#### FR-SCORE-002: Liderlik Tablosu
-- Vibeler sayfasında skor sıralaması
-- Kullanıcı sayısı, aktif vibe sayısı, günlük aktif kullanıcı istatistikleri
+#### FR-SCORE-002: Sure Takibi
+- Uygulama acikken her 5 dakikada bir kullanici suresi guncellenir (`updateTimeSpent`).
 
-### 4.6 Kullanıcı Profili
+#### FR-SCORE-003: Skor Listeleri
+- `getAllUsersWithVibeScores` ve `getEventsWithOwnerVibeScores` ile skor turetimleri.
 
-#### FR-PROFILE-001: Profil Görüntüleme & Düzenleme
-- Avatar yükleme (500x500px sıkıştırma, maks 2MB)
-- Ad, soyad, kullanıcı adı, bio, yaş, cinsiyet düzenleme
-- "Etkinliklerim" ve "Katıldıklarım" listeleri
-- Arkadaş listesi
+### 4.6 Kullanici Profili
 
-#### FR-PROFILE-002: Cinsiyet Seçenekleri
-- 8 seçenek: Erkek, Kadın, Transgender, Lezbiyen, Gay, Biseksüel (erkek), Biseksüel (kadın), Belirtmek istemiyorum
+#### FR-PROFILE-001: Profil Alanlari
+- `firstName`, `lastName`, `username`, `bio`, `avatar`, `birthDate`, `age`, `district`, `gender`.
+
+#### FR-PROFILE-002: Cinsiyet Secenekleri
+- `male`, `female`, `transgender`, `lesbian`, `gay`, `bisexual_male`, `bisexual_female`, `prefer_not_to_say`.
 
 ### 4.7 Bildirim Sistemi
 
-#### FR-NOTIF-001: Bildirim Türleri
-- `friend_request`: Arkadaşlık isteği
-- `event_join`: Etkinliğe katılım
-- `event_comment`: Etkinlik yorumu
-
-#### FR-NOTIF-002: Bildirim Yönetimi
-- Son 20 bildirim listeleme
-- Okunmamış sayacı (Navbar'da kırmızı badge)
-- Tekil veya toplu okundu işaretleme
+#### FR-NOTIF-001: Bildirim Akisi
+- Son 20 bildirim listelenir.
+- Okunmamis sayaç navbar'da gosterilir.
+- Tekil (`markNotificationAsRead`) ve toplu (`markAllNotificationsAsRead`) okundu islemleri desteklenir.
 
 ### 4.8 Yorum Sistemi
 
-#### FR-COMMENT-001: Yorum Oluşturma
-- Düz yorum veya yanıt (`parent_comment_id` ile iç içe)
-- Etkinlik sahibinin yorumları üstte sabitlenme
+#### FR-COMMENT-001: Yorum ve Yanit
+- Duz yorum (`saveComment`) ve nested yanit (`saveCommentReply`) desteklenir.
+- `getCommentsWithReplies` parent-child yapisini dondurur.
 
-#### FR-COMMENT-002: Yorum Silme
-- Sadece kendi yorumunu silme
-- Admin tüm yorumları silebilme
+### 4.9 Etkinlik Galerisi
 
-### 4.9 Mekan Rehberi
+#### FR-GALLERY-001: Event Gallery
+- Etkinlik bazli galeri fotograflari saklanir (`event_gallery`).
+- Tekli/coklu foto yukleme ve silme desteklenir.
 
-#### FR-VENUE-001: Mekan Veritabanı
-- 100+ doğrulanmış mekan (GPS koordinatlı)
-- 4 ana ilçe: Dalaman, Ortaca/Dalyan, Muğla Merkez/Kötekli, Fethiye
-- Kategoriler: Barlar, Kulüpler, Kafeler, Plajlar
-- Her mekan: ad, ilçe, kategori, koordinatlar
+### 4.10 Site Galerisi
 
-#### FR-VENUE-002: Mekan Gösterimi
-- İlçelere göre gruplandırılmış liste
-- Google Maps ile harita üzerinde gösterim
-- Karanlık/aydınlık tema desteği
+#### FR-SITE-GALLERY-001: Topluluk Galerisi
+- Public galeri sayfasi: `/#/galerimiz`.
+- Admin panelinden gorsel ekleme/silme: `/#/admin/gallery`.
+- Veri kaynagi: `site_gallery` tablosu + Supabase Storage.
 
-### 4.10 CMS (İçerik Yönetim Sistemi)
+### 4.11 CMS Sistemi
 
-#### FR-CMS-001: Sayfa Yönetimi
-- Dinamik sayfa oluşturma/düzenleme/yayınlama
-- URL slug ile erişim (`/page/:slug`)
-- Menüde gösterilme sırası ayarı
+#### FR-CMS-001: Sayfa Yonetimi
+- Sayfa CRUD: `cms_pages`.
+- Slug bazli yayin: `/#/page/:slug`.
+- Menude gosterim ve siralama alanlari desteklenir.
 
-#### FR-CMS-002: Modül Editörü
-- 20 modül tipi: metin, başlık, resim, düğme, boşluk, kart, hero, grid, video, ayırıcı, akordeon, sekmeler, galeri, referans, fiyatlandırma, özellik, CTA, sosyal medya, ham HTML, embed
-- Görsel stil özelleştirme
-- Sıralama (drag & drop mantığı)
+#### FR-CMS-002: Modul Yonetimi
+- Modul CRUD + siralama (`reorderCMSModules`).
+- Modul tipleri (20 adet):
+`text`, `heading`, `image`, `button`, `spacer`, `card`, `hero`, `grid`, `video`, `divider`, `accordion`, `tabs`, `gallery`, `testimonial`, `pricing`, `feature`, `cta`, `social`, `html`, `embed`.
 
 ---
 
 ## 5. Admin Panel Gereksinimleri
 
-### 5.1 Kullanıcı Yönetimi (FR-ADMIN-001)
-- Tüm kullanıcıları listeleme (Supabase Auth admin API)
-- Kullanıcı hesabı silme (Auth + DB cascade)
-- Rol değiştirme (`user` ↔ `admin`)
-- Kullanıcı banlama (sebep + süre)
-- Ban kaldırma
+### FR-ADMIN-001: Admin Erisim Modeli
+- Erisim, iki yolla saglanir:
+1. `users.role === 'admin'`
+2. `localStorage.silius_admin_auth === 'true'`
 
-### 5.2 Etkinlik Yönetimi (FR-ADMIN-002)
-- Tüm etkinlikleri listeleme (katılımcı sayıları ile)
-- Etkinlik silme (admin RLS bypass)
-- Etkinlik düzenleme
+### FR-ADMIN-002: Kullanici Yonetimi
+- Kullanici listeleme, rol degistirme, silme, ban/unban islemleri.
 
-### 5.3 Ban Yönetimi (FR-ADMIN-003)
-- Kullanıcı banı: user_id, sebep, bitiş tarihi
-- IP banı: IP adresi, ilişkili user_id, sebep
-- Otomatik ban süresi dolumu
-- Ban listesi görüntüleme
+### FR-ADMIN-003: Etkinlik Yonetimi
+- Tum etkinlikleri listeleme, duzenleme, silme.
 
-### 5.4 CMS Yönetimi (FR-ADMIN-004)
-- Sayfa CRUD işlemleri
-- 20 modül tipli görsel editör
-- Yayın durumu yönetimi
-- Menü sıralama
+### FR-ADMIN-004: Ban Yonetimi
+- Kullanici ve IP banlari (`banned_users`, `banned_ips`).
 
-### 5.5 Admin İstemci (FR-ADMIN-005)
-- **Supabase Service Role Key** ile RLS bypass
-- Ortam değişkeni: `VITE_SUPABASE_SERVICE_ROLE_KEY`
-- Service key yoksa normal istemciye fallback
-- Tüm admin işlemlerinde console log
+### FR-ADMIN-005: CMS ve Galeri Yonetimi
+- CMS sayfalari/modulleri yonetimi.
+- Site galerisi icerik yonetimi.
+
+### FR-ADMIN-006: Service Role Fallback
+- `VITE_SUPABASE_SERVICE_ROLE_KEY` varsa admin client kullanilir (RLS bypass).
+- Anahtar yoksa standart client fallback ile calisir.
 
 ---
 
-## 6. Veritabanı Şeması
+## 6. Veritabani Semasi (Guncel)
 
-### 6.1 Tablolar
+### 6.1 Ana Tablolar
 
 ```
-users                    # Kullanıcı profilleri
-├── id (UUID, PK, FK → auth.users)
-├── email, firstName, lastName, username
-├── bio, avatar, age, gender
-├── role (user | admin)
-├── hasAcceptedTerms, isProfileComplete, kvkkConsent
-├── created_at, lastActiveAt, totalTimeSpent
-└── dailyVibeCount, lastVibeDate
-
-events                   # Etkinlikler (Vibeler)
-├── id (UUID, PK)
-├── user_id (FK → users)
-├── title, description, date, location
-├── latitude, longitude, image
-├── category (8 enum)
-├── checkin_code
-└── created_at
-
-event_participants       # Etkinlik katılımcıları
-├── id (UUID, PK)
-├── event_id (FK → events)
-├── user_id (FK → users)
-├── checked_in (boolean)
-├── joined_at
-└── UNIQUE(event_id, user_id)
-
-event_checkins           # QR check-in kayıtları
-├── id (UUID, PK)
-├── event_id, user_id
-├── checked_in_at
-└── vibe_points_earned
-
-event_gallery            # Etkinlik galerileri
-├── id (UUID, PK)
-├── event_id, user_id
-├── image_url, caption
-├── display_order, created_at
-
-comments                 # Yorumlar (iç içe)
-├── id (UUID, PK)
-├── event_id, user_id, text
-├── parent_comment_id (FK → comments, nullable)
-└── created_at
-
-friends                  # Arkadaşlık ilişkileri (tek yönlü)
-├── id (UUID, PK)
-├── user_id, friend_id
-├── created_at
-└── UNIQUE(user_id, friend_id)
-
-notifications            # Bildirimler
-├── id (UUID, PK)
-├── user_id, type, title, message, link
-├── is_read, from_user_id, event_id
-└── created_at
-
-banned_users             # Kullanıcı banları
-├── id, user_id, banned_by
-├── reason, banned_at, expires_at
-
-banned_ips               # IP banları
-├── id, ip_address, user_id
-├── reason, banned_at, banned_by
-
-cms_pages                # CMS sayfaları
-├── id, slug, title
-├── is_published, show_in_menu, menu_order
-├── created_by, created_at, updated_at
-
-cms_modules              # CMS modülleri (20 tip)
-├── id, page_id, module_type
-├── content (JSON), styles (JSON)
-└── order_index
+users
+events
+event_participants
+event_gallery
+comments
+friends
+notifications
+banned_users
+banned_ips
+cms_pages
+cms_modules
+site_gallery
 ```
 
-### 6.2 Row Level Security (RLS)
-- Tüm tablolarda RLS aktif
-- Kullanıcılar kendi verilerini okuma/yazma
-- Admin işlemleri Service Role Key ile RLS bypass
-- Çoklu migration dosyası ile RLS politika düzeltmeleri
+### 6.2 Kritik Alanlar
+
+- `users`: `birthDate`, `district`, `kvkkConsent`, `isProfileComplete`, `dailyVibeCount`, `lastVibeDate`, `totalTimeSpent`, `lastActiveAt`
+- `events`: `category`, `latitude`, `longitude`, `checkin_code`
+- `event_participants`: `checked_in`
+- `cms_modules`: `module_type`, `content (JSON)`, `styles (JSON)`, `order_index`
+
+### 6.3 RLS
+
+- Tablolarda RLS aktiftir.
+- Admin islemleri service-role client ile bypass edilebilir.
 
 ---
 
 ## 7. Non-Fonksiyonel Gereksinimler
 
 ### 7.1 Performans
-| Metrik | Hedef |
-|--------|-------|
-| İlk yükleme süresi | < 3 saniye |
-| Profil fetch timeout | < 2 saniye |
-| Profil cache TTL | 10 dakika |
-| Etkinlik listesi cache | 2 dakika |
-| Avatar sıkıştırma | 500x500px, maks 2MB |
+- Ilk yukleme hedefi: hizli acilis (lazy-loading + cache mekanizmasi)
+- Profil cache TTL: 10 dakika
+- Profil fetch timeout: 1.5 saniye
+- Auth loading fail-safe: 2 saniye
+- App force-show: 2.5 saniye
 
-### 7.2 Güvenlik
-- KVKK (Kişisel Verilerin Korunması Kanunu) uyumluluğu
-- Row Level Security (RLS) ile veri izolasyonu
-- Service Role Key sadece admin işlemlerinde kullanılma
-- Oturum: sessionStorage (tarayıcı kapatılınca temizlenir)
-- IP bazlı banlama desteği
-- CORS ve güvenlik başlıkları (Nginx)
+### 7.2 Guvenlik
+- Session saklama: `sessionStorage`
+- Token yenileme: `autoRefreshToken: true`
+- KVKK ve profil tamamlama akislari destekli
+- Ban kontrolu app girisinde yapilir
 
-### 7.3 Kullanılabilirlik
-- Mobil öncelikli (mobile-first) tasarım
-- Karanlık/aydınlık tema desteği
-- Alt navigasyon çubuğu (5 ikon + bildirim + admin + kullanıcı menüsü)
-- Glass morphism efektleri
-- Yumuşak geçişler ve animasyonlar
-- Toast bildirimleri ile kullanıcı geri bildirimi
-
-### 7.4 Erişilebilirlik
-- 8 LGBTQ+ cinsiyet kimliği desteği
-- Türkçe dil desteği (ana dil)
-- Responsive tasarım (tüm ekran boyutları)
-
-### 7.5 Ölçeklenebilirlik
-- Docker konteyner tabanlı deployment
-- Nginx reverse proxy
-- Supabase managed backend (otomatik ölçeklendirme)
+### 7.3 Kullanilabilirlik
+- Mobile-first
+- Karanlik/aydinlik tema
+- Alt navigasyon + bildirim popup
+- Dinamik CMS menu entegrasyonu
 
 ---
 
-## 8. Sayfa & Route Haritası
+## 8. Sayfa ve Route Haritasi (Guncel)
 
-### 8.1 Genel (Kimlik Doğrulama Gerektirmeyen)
+### 8.1 Public Route'lar
 
-| Route | Sayfa | Açıklama |
-|-------|-------|----------|
-| `/` | Landing | Ana sayfa, özellikler, vibe galerisi |
-| `/auth` | Auth | Giriş/kayıt (e-posta + Google) |
-| `/about` | About | Platform hakkında |
-| `/security` | Security | Güvenlik & gizlilik |
-| `/guidelines` | Guidelines | Topluluk kuralları |
-| `/contact` | Contact | İletişim |
-| `/how-to-use` | HowToUse | Kullanım kılavuzu |
-| `/page/:slug` | CMSPageView | Dinamik CMS sayfaları |
+| Route | Sayfa |
+|------|------|
+| `/` | Landing |
+| `/auth` | Auth |
+| `/about` | About |
+| `/security` | Security |
+| `/guidelines` | Guidelines |
+| `/cookie-policy` | Cookie |
+| `/contact` | Contact |
+| `/nasil-kullanilir` | HowToUse |
+| `/vibeler` | Vibeler |
+| `/topluluk` | Topluluk |
+| `/mekanlar` | Mekanlar |
+| `/info` | Info |
+| `/galerimiz` | Galerimiz |
+| `/checkin/:eventId` | CheckInPage |
+| `/page/:slug` | CMSPageView |
 
-### 8.2 Korumalı (Oturum + Profil Tamamlanmış)
+### 8.2 Korumali Route'lar
 
-| Route | Sayfa | Açıklama |
-|-------|-------|----------|
-| `/home` | Home | Etkinlik akışı, oluşturma, filtreleme |
-| `/events/:id` | EventDetail | Etkinlik detay, galeri, yorumlar |
-| `/profile` | Profile | Profil görüntüleme/düzenleme |
-| `/profile-setup` | ProfileSetup | İlk profil tamamlama |
-| `/friends` | Friends | Arkadaş listesi |
-| `/users` | Users | Kullanıcı keşfi |
-| `/my-qr` | MyQR | Etkinlik QR kodları |
-| `/checkin/:eventId` | CheckInPage | QR check-in sayfası |
-| `/vibeler` | Vibeler | İstatistikler & liderlik tablosu |
-| `/topluluk` | Topluluk | Topluluk vitrin sayfası |
-| `/mekanlar` | Mekanlar | Mekan rehberi |
+| Route | Sayfa |
+|------|------|
+| `/profile-setup` | ProfileSetup (oturum var, profil eksikse) |
+| `/home` | Home |
+| `/events/:id` | EventDetail |
+| `/users` | Users |
+| `/friends` | Friends |
+| `/profile` | Profile |
+| `/my-qr` | MyQR |
 
-### 8.3 Admin
+### 8.3 Admin Route'lar
 
-| Route | Sayfa | Açıklama |
-|-------|-------|----------|
-| `/admin` | Admin | Admin dashboard |
-| `/admin/users` | AdminUsers | Kullanıcı yönetimi |
-| `/admin/vibes` | AdminVibes | Etkinlik yönetimi |
-| `/admin/pages` | AdminPages | CMS sayfa yönetimi |
-| `/admin/bans` | AdminBans | Ban yönetimi |
-| `/admin/pages/:id/edit` | PageEditor | Sayfa modül editörü |
-
----
-
-## 9. API / Veritabanı Operasyonları Özeti
-
-### 9.1 Etkinlik İşlemleri
-- `getEvents()` — Tüm etkinlikler (en yeni önce)
-- `getEventById(id)` — Tekil etkinlik
-- `saveEvent(data)` — Etkinlik oluşturma + günlük limit kontrolü
-- `updateEvent(id, updates)` — Etkinlik düzenleme
-- `deleteEvent(id)` — Etkinlik silme (sahip veya admin)
-- `getEventsWithOwnerVibeScores()` — Etkinlikler + oluşturanın skoru
-- `checkDailyVibeLimit(userId)` — 3/gün limit kontrolü
-- `incrementDailyVibeCount(userId)` — Oluşturma sonrası sayaç artırma
-
-### 9.2 Katılımcı İşlemleri
-- `joinEvent(eventId)` — Etkinliğe katılma
-- `leaveEvent(eventId)` — Etkinlikten ayrılma
-- `getParticipantCount(eventId)` — Toplam katılımcı
-- `getLiveParticipantCount(eventId)` — Check-in yapan sayısı
-- `getEventParticipants(eventId)` — Katılımcı ID listesi
-- `isUserParticipant(eventId, userId)` — Katılım kontrolü
-
-### 9.3 Kullanıcı İşlemleri
-- `getUsers()` — Tüm kullanıcılar
-- `getUserById(id)` — Tekil kullanıcı
-- `updateUserProfile(data)` — Profil güncelleme
-- `getAllUsersWithVibeScores()` — Skorlu kullanıcı listesi
-- `getCurrentUser()` — Mevcut oturum kullanıcısı
-
-### 9.4 Arkadaşlık İşlemleri
-- `addFriend(friendId)` — Arkadaş ekleme
-- `removeFriend(friendId)` — Arkadaş silme
-- `getFriends(userId)` — Arkadaş listesi
-- `getReverseFriends(userId)` — Takipçi listesi
-- `isFriend(userId, friendId)` — Arkadaşlık kontrolü
-
-### 9.5 Yorum İşlemleri
-- `getCommentsWithReplies(eventId, creatorId)` — İç içe yorumlar
-- `addComment(eventId, text, parentCommentId?)` — Yorum/yanıt ekleme
-- `deleteComment(commentId)` — Yorum silme
-
-### 9.6 Bildirim İşlemleri
-- `getNotifications(userId)` — Son 20 bildirim
-- `getUnreadNotificationCount(userId)` — Okunmamış sayısı
-- `markNotificationAsRead(id)` / `markAllNotificationsAsRead(userId)`
-- `createNotification(type, title, message, link)` — Bildirim oluşturma
-
-### 9.7 Ban İşlemleri
-- `banUser()` / `unbanUser()` / `isUserBanned()` / `getBanInfo()`
-- `banIP()` — IP bazlı banlama
-
-### 9.8 Galeri İşlemleri
-- `addGalleryPhoto(eventId, photoUrl)` — Fotoğraf ekleme
-- `getEventGallery(eventId)` — Etkinlik galerisi
-
-### 9.9 CMS İşlemleri
-- `getCMSPages()` / `getCMSPage(slug)` / `saveCMSPage(page)`
-- `getCMSModules(pageId)` / `saveCMSModule(module)` / `deleteCMSModule(moduleId)`
+| Route | Sayfa |
+|------|------|
+| `/admin` | Admin |
+| `/admin/users` | AdminUsers |
+| `/admin/vibes` | AdminVibes |
+| `/admin/pages` | AdminPages |
+| `/admin/pages/:id` | PageEditor |
+| `/admin/bans` | AdminBans |
+| `/admin/gallery` | AdminGallery |
 
 ---
 
-## 10. Ortam Değişkenleri
+## 9. API ve Veritabani Operasyonlari (Kod Bazli Ozet)
 
-| Değişken | Açıklama | Zorunlu |
+### 9.1 Event
+- `getEvents()`
+- `getEventById(eventId)`
+- `saveEvent(event)`
+- `updateEvent(eventId, updates)`
+- `deleteEvent(eventId)`
+- `checkDailyVibeLimit(userId)`
+- `incrementDailyVibeCount(userId)`
+
+### 9.2 Katilim ve Check-in
+- `joinEvent(eventId)`
+- `leaveEvent(eventId)`
+- `getParticipantCount(eventId)`
+- `getLiveParticipantCount(eventId)`
+- `isUserParticipant(eventId, userId)`
+- `isUserCheckedIn(eventId, userId)`
+- `checkInToEvent(eventId, userId)`
+
+### 9.3 Kullanici
+- `getUsers()`
+- `getUserById(userId)`
+- `updateUser(userId, updates)`
+- `getCurrentUser()`
+
+### 9.4 Arkadaslik
+- `getFriends(userId)`
+- `getReverseFriends(userId)`
+- `getFriendIds(userId)`
+- `addFriend(friendId)`
+- `isFriend(userId, friendId)`
+
+### 9.5 Yorum
+- `getComments(eventId)`
+- `saveComment(eventId, text)`
+- `getCommentsWithReplies(eventId, eventOwnerId)`
+- `saveCommentReply(eventId, parentCommentId, text)`
+
+### 9.6 Bildirim
+- `getNotifications(userId)`
+- `getUnreadNotificationCount(userId)`
+- `markNotificationAsRead(notificationId)`
+- `markAllNotificationsAsRead(userId)`
+- `createNotification(notification)`
+
+### 9.7 Ban
+- `banUser(userId, reason, bannedBy, expiresAt?)`
+- `unbanUser(userId)`
+- `isUserBanned(userId)`
+- `getBanInfo(userId)`
+- `banIP(ip, userId, reason, bannedBy)`
+- `unbanIP(ip)`
+
+### 9.8 CMS
+- `getCMSPages()`
+- `getCMSPage(slugOrId)`
+- `saveCMSPage(page)`
+- `updateCMSPage(pageId, updates)`
+- `deleteCMSPage(pageId)`
+- `getCMSModules(pageId)`
+- `saveCMSModule(module)`
+- `updateCMSModule(moduleId, updates)`
+- `deleteCMSModule(moduleId)`
+- `reorderCMSModules(pageId, moduleIds)`
+
+### 9.9 Galeri
+- Event gallery: `getEventGallery`, `addGalleryPhoto`, `addMultipleGalleryPhotos`, `deleteGalleryPhoto`, `getGalleryCount`
+- Site gallery: `getSiteGalleryImages`, `addSiteGalleryImage`, `deleteSiteGalleryImage`
+
+### 9.10 Vibe Score ve Aktivite
+- `getAllUsersWithVibeScores()`
+- `getEventsWithOwnerVibeScores()`
+- `incrementVibeScore(userId, points)`
+- `updateTimeSpent(userId, minutesToAdd)`
+
+---
+
+## 10. Ortam Degiskenleri
+
+| Degisken | Aciklama | Zorunlu |
 |----------|----------|---------|
-| `VITE_SUPABASE_URL` | Supabase proje URL'si | ✅ |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonim anahtar | ✅ |
-| `VITE_SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (admin) | ⚠️ Admin işlemleri için |
-| `GEMINI_API_KEY` | Google Gemini API anahtarı | ❌ |
+| `VITE_SUPABASE_URL` | Supabase proje URL | Evet |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon key | Evet |
+| `VITE_SUPABASE_SERVICE_ROLE_KEY` | Admin islemleri icin service role | Admin senaryolari icin onerilir |
+| `VITE_GOOGLE_OAUTH_CALLBACK_PATH` | OAuth callback path override | Opsiyonel |
+| `VITE_GOOGLE_OAUTH_REDIRECT_TO` | OAuth redirect URL override | Opsiyonel |
+| `GEMINI_API_KEY` | Build-time API key (opsiyonel) | Opsiyonel |
 
 ---
 
 ## 11. Deployment Mimarisi
 
 ```
-                    ┌─────────────┐
-                    │   İstemci   │
-                    │  (Tarayıcı) │
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │    Nginx    │
-                    │   (Proxy)   │
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │   Docker    │
-                    │ (Vite App)  │
-                    │  Port 3000  │
-                    └──────┬──────┘
-                           │
-              ┌────────────▼────────────┐
-              │       Supabase          │
-              │  ┌────┐ ┌──────┐ ┌───┐ │
-              │  │Auth│ │  DB  │ │S3 │ │
-              │  └────┘ └──────┘ └───┘ │
-              │  ┌────────┐ ┌────────┐ │
-              │  │Realtime│ │  Edge  │ │
-              │  └────────┘ └────────┘ │
-              └─────────────────────────┘
+Tarayici (Client)
+    -> Nginx (reverse proxy)
+    -> Vite Build (React SPA)
+    -> Supabase (Auth + Postgres + Storage + Realtime)
 ```
 
 ---
 
-## 12. Riskler & Kısıtlamalar
+## 12. Riskler ve Kisitlar
 
-| Risk | Etki | Azaltma |
-|------|------|---------|
-| Service Role Key frontend'de açık | Yüksek | Sadece admin işlemlerinde kullanılmalı, ideal olarak Edge Function'a taşınmalı |
-| sessionStorage oturum yönetimi | Orta | Her yeni sekme/pencerede yeniden giriş gerekir |
-| Tek yönlü arkadaşlık sistemi | Düşük | UX'te "takip" olarak yeniden çerçeveleme |
-| Günlük 3 vibe limiti | Düşük | Premium plan ile artırılabilir |
-| Bölgesel mekan verisi (sadece Muğla) | Orta | Kullanıcı katkılı mekan ekleme özelliği planlanabilir |
-| RLS politikalarında çoklu düzeltme ihtiyacı | Orta | Kapsamlı RLS test suite oluşturulmalı |
-
----
-
-## 13. Gelecek Geliştirmeler (Backlog)
-
-- [ ] Push bildirimleri (Web Push API)
-- [ ] Mesajlaşma / DM sistemi
-- [ ] Etkinlik davet sistemi
-- [ ] Premium üyelik & ödeme entegrasyonu
-- [ ] Kullanıcı katkılı mekan ekleme
-- [ ] Etkinlik hatırlatıcıları
-- [ ] Sosyal medya paylaşım entegrasyonu
-- [ ] Çoklu dil desteği (İngilizce)
-- [ ] PWA (Progressive Web App) desteği
-- [ ] Edge Functions ile backend mantığını sunucu tarafına taşıma
-- [ ] Analytics dashboard (kullanım istatistikleri)
-- [ ] Etkinlik önerisi algoritması (ML tabanlı)
+| Risk | Etki | Durum |
+|------|------|-------|
+| Service role key'in istemci tarafinda kullanimi | Yuksek | Kisa vadede mevcut, uzun vadede Edge Function'a tasinmali |
+| Tek yonlu arkadaslik modeli | Orta | UX'te takip mantigiyla aciklanir |
+| Arkadas silme operasyonunun olmamasi | Orta | Yol haritasi adayi |
+| SessionStorage oturumu | Orta | Sekme/pencere davranislari kullaniciya aciklanmali |
+| RLS migration bagimliligi | Orta | SQL migration'larin dogru sirada uygulanmasi gerekli |
 
 ---
 
-## 14. Başarı Metrikleri
+## 13. Kisa Backlog Onerisi
 
-| Metrik | Hedef | Ölçüm Yöntemi |
-|--------|-------|----------------|
-| Kayıtlı kullanıcı sayısı | İlk 3 ayda 500+ | Supabase Auth |
-| Günlük aktif kullanıcı | %20+ kayıtlı kullanıcı | lastActiveAt tracking |
-| Oluşturulan vibe sayısı | Haftalık 50+ | events tablosu |
-| QR check-in oranı | Katılımcıların %30+'ı | event_checkins tablosu |
-| Ortalama oturum süresi | 10+ dakika | totalTimeSpent tracking |
-| Arkadaşlık bağlantı sayısı | Kullanıcı başına 5+ | friends tablosu |
+- Arkadasliktan cikarma (`removeFriend`) operasyonu
+- Event check-in puanlarinin raporlanmasi
+- Admin islemlerinin Edge Functions'a tasinmasi
+- Coklu dil destegi (TR/EN)
+- Push notification entegrasyonu
 
 ---
 
-*Bu PRD, Silius Community Platform'un mevcut durumunu ve tüm fonksiyonel/teknik gereksinimlerini belgelemektedir. Proje geliştikçe güncellenmelidir.*
+Bu PRD, su anki kod tabanina (route'lar, veri modeli, servis katmani ve aktif UI akislarina) gore guncellenmistir.

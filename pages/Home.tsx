@@ -333,12 +333,24 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
       if (!districtMeta) return false;
 
-      const aliases = [
+      const baseAliases = [
         districtMeta.label,
+        districtMeta.name,
         districtMeta.id,
         districtMeta.id.replace(/-/g, ' '),
         districtMeta.id.replace(/-/g, '/'),
       ];
+
+      const tokenAliases = baseAliases
+        .flatMap((value) => value.split(/[\s\-/]+/g))
+        .map((value) => value.trim())
+        .filter((value) => value.length > 2);
+
+      const districtSynonyms: Record<string, string[]> = {
+        'mugla-merkez': ['muğla', 'mugla', 'kötekli', 'kotekli', 'menteşe', 'mentese', 'ula', 'akyaka'],
+      };
+
+      const aliases = [...baseAliases, ...tokenAliases, ...(districtSynonyms[districtMeta.id] || [])];
 
       return aliases.some((alias) => locationText.includes(normalize(alias)));
     })
